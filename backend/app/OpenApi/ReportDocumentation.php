@@ -84,4 +84,26 @@ use OpenApi\Attributes as OA;
         new OA\Response(response: 422, description: 'Filtros inválidos'),
     ],
 )]
+#[OA\Get(
+    path: '/api/reports/billings.pdf',
+    operationId: 'exportBillingReportPdf',
+    summary: 'Exporta o relatório em PDF',
+    description: 'Usa os mesmos filtros da consulta. O arquivo traz o período, os filtros, as cobranças e os totalizadores. As cobranças são lidas em cursor.',
+    security: [['bearerAuth' => []]],
+    tags: ['Relatórios'],
+    parameters: [
+        new OA\Parameter(name: 'period', in: 'query', required: true, schema: new OA\Schema(type: 'string', enum: ['issued', 'due', 'paid'])),
+        new OA\Parameter(name: 'from', in: 'query', required: true, schema: new OA\Schema(type: 'string', format: 'date')),
+        new OA\Parameter(name: 'to', in: 'query', required: true, schema: new OA\Schema(type: 'string', format: 'date')),
+        new OA\Parameter(name: 'customer_id', in: 'query', required: false, schema: new OA\Schema(type: 'integer')),
+        new OA\Parameter(name: 'status', in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['pending', 'overdue', 'paid'])),
+        new OA\Parameter(name: 'sort', in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['customer', 'description', 'issued_on', 'due_on', 'paid_on', 'status', 'original_amount', 'interest_amount', 'updated_amount', 'amount_paid'])),
+        new OA\Parameter(name: 'direction', in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['asc', 'desc'])),
+    ],
+    responses: [
+        new OA\Response(response: 200, description: 'Arquivo PDF', content: new OA\MediaType(mediaType: 'application/pdf')),
+        new OA\Response(response: 401, description: 'Não autenticado'),
+        new OA\Response(response: 422, description: 'Filtros inválidos'),
+    ],
+)]
 class ReportDocumentation {}

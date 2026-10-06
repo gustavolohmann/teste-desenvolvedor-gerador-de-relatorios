@@ -63,12 +63,20 @@ export async function getBillingReport(query: ReportQuery, signal?: AbortSignal)
   return result
 }
 
-export async function downloadBillingReport(query: ReportQuery): Promise<void> {
-  const { blob, filename } = await apiBlob(`/api/reports/billings.csv?${reportSearch(query, false).toString()}`)
+async function saveDownload(path: string, accept: string, fallback: string): Promise<void> {
+  const { blob, filename } = await apiBlob(path, accept, fallback)
   const url = URL.createObjectURL(blob)
   const link = document.createElement('a')
   link.href = url
   link.download = filename
   link.click()
   URL.revokeObjectURL(url)
+}
+
+export async function downloadBillingReport(query: ReportQuery): Promise<void> {
+  await saveDownload(`/api/reports/billings.csv?${reportSearch(query, false).toString()}`, 'text/csv', 'faturamento.csv')
+}
+
+export async function downloadBillingReportPdf(query: ReportQuery): Promise<void> {
+  await saveDownload(`/api/reports/billings.pdf?${reportSearch(query, false).toString()}`, 'application/pdf', 'faturamento.pdf')
 }

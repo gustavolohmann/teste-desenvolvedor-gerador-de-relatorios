@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { billingSituation, formatDate, formatMoney, listCustomerOptions, type Billing } from '../api/billings'
 import type { Customer } from '../api/customers'
-import { downloadBillingReport, getBillingReport, type BillingReport, type ReportDirection, type ReportPeriod, type ReportStatus } from '../api/reports'
+import { downloadBillingReport, downloadBillingReportPdf, getBillingReport, type BillingReport, type ReportDirection, type ReportPeriod, type ReportStatus } from '../api/reports'
 import { Sheet } from '../components/Sheet'
 
 const sorts = [
@@ -40,7 +40,7 @@ export function BillingReportPage() {
   const [report, setReport] = useState<BillingReport | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
-  const [exporting, setExporting] = useState(false)
+  const [exporting, setExporting] = useState<'csv' | 'pdf' | null>(null)
   const [shownKey, setShownKey] = useState(queryKey)
 
   if (shownKey !== queryKey) {
@@ -115,16 +115,17 @@ export function BillingReportPage() {
     update({ sort: column, direction: 'asc' })
   }
 
-  async function handleExport() {
-    setExporting(true)
+  async function handleExport(format: 'csv' | 'pdf') {
+    setExporting(format)
     setError(null)
 
     try {
-      await downloadBillingReport({ period, from, to, customerId, status, sort, direction, page })
+      const download = format === 'pdf' ? downloadBillingReportPdf : downloadBillingReport
+      await download({ period, from, to, customerId, status, sort, direction, page })
     } catch (reason) {
       setError(reason instanceof ApiError ? reason.message : 'A API não respondeu.')
     } finally {
-      setExporting(false)
+      setExporting(null)
     }
   }
 
@@ -177,9 +178,12 @@ export function BillingReportPage() {
           </select>
         </label>
       </form>
-      <div className="toolbar">
-        <button className="button button-secondary" type="button" onClick={handleExport} disabled={exporting}>
-          {exporting ? 'Exportando.' : 'Exportar CSV'}
+      <div className="toolbar actions">
+        <button className="button button-secondary" type="button" onClick={() => handleExport('csv')} disabled={exporting !== null}>
+          {exporting === 'csv' ? 'Exportando.' : 'Exportar CSV'}
+        </button>
+        <button className="button button-secondary" type="button" onClick={() => handleExport('pdf')} disabled={exporting !== null}>
+          {exporting === 'pdf' ? 'Exportando.' : 'Exportar PDF'}
         </button>
       </div>
       {loading ? <p className="status">Carregando relatório.</p> : null}

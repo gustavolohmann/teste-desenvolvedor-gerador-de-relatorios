@@ -75,9 +75,9 @@ export async function apiRequest<T>(
   return response.json() as Promise<T>
 }
 
-export async function apiBlob(path: string): Promise<{ blob: Blob; filename: string }> {
+export async function apiBlob(path: string, accept = 'text/csv', fallback = 'faturamento.csv'): Promise<{ blob: Blob; filename: string }> {
   const headers = new Headers({
-    Accept: 'text/csv',
+    Accept: accept,
   })
   const token = readToken()
 
@@ -96,6 +96,6 @@ export async function apiBlob(path: string): Promise<{ blob: Blob; filename: str
 
   return {
     blob: await response.blob(),
-    filename: match?.[1]?.trim() ?? 'faturamento.csv',
+    filename: match?.[1]?.trim() ?? fallback,
   }
 }
