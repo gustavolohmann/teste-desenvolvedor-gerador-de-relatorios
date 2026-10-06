@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -25,6 +26,7 @@ class BillingReportCsvTest extends TestCase
     {
         parent::setUp();
 
+        Storage::fake('reports');
         Sanctum::actingAs(User::factory()->create());
         $today = Carbon::today();
         $this->from = $today->copy()->subDays(40)->toDateString();
@@ -139,14 +141,28 @@ class BillingReportCsvTest extends TestCase
         $this->assertSame("'=cmd", $this->dataRows($rows)[0][1]);
     }
 
+    public function test_csv_quotes_semicolons_and_quotes(): void
+    {
+        $due = Carbon::today()->addDays(90)->toDateString();
+        $this->charge($this->ana, 'A;B "C"', Carbon::today(), Carbon::today()->addDays(90), '10.00');
+
+        $rows = $this->csvRows($this->csv([
+            'period' => 'due',
+            'from' => $due,
+            'to' => $due,
+        ]));
+
+        $this->assertSame('A;B "C"', $this->dataRows($rows)[0][1]);
+        $this->assertCount(10, $this->dataRows($rows)[0]);
+    }
+
     public function test_invalid_csv_filters_are_rejected(): void
     {
-        $this->get('/api/reports/billings.csv?'.http_build_query([
+        $this->postJson('/api/reports/export', [
             'period' => 'due',
             'from' => '2026-09-30',
             'to' => '2026-09-01',
-        ]), [
-            'Accept' => 'text/csv',
+            'format' => 'csv',
         ])->assertUnprocessable()
             ->assertJsonPath('errors.to.0', 'A data final deve ser igual ou posterior à inicial.');
     }
@@ -156,7 +172,12 @@ class BillingReportCsvTest extends TestCase
      */
     private function csv(array $query): string
     {
-        $response = $this->get('/api/reports/billings.csv?'.http_build_query($query), [
+        $created = $this->postJson('/api/reports/export', [
+            ...$query,
+            'format' => 'csv',
+        ]);
+        $created->assertAccepted();
+        $response = $this->get('/api/reports/export/'.$created->json('job_id').'/download', [
             'Accept' => 'text/csv',
         ]);
 

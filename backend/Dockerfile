@@ -14,7 +14,7 @@ RUN composer install --no-dev --no-interaction --no-scripts --prefer-dist
 
 COPY . .
 RUN composer dump-autoload --optimize --no-dev --no-interaction \
-    && sed -i 's/\r$//' docker/entrypoint.sh \
+    && sed -i 's/\r$//' docker/entrypoint.sh docker/worker.sh \
     && mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs bootstrap/cache \
     && chmod -R ug+rwx storage bootstrap/cache
 

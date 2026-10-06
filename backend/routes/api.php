@@ -5,6 +5,7 @@ use App\Http\Controllers\BillingController;
 use App\Http\Controllers\BillingReportController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\ReportExportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/health', HealthController::class);
@@ -23,6 +24,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/billings/{billing}', [BillingController::class, 'update']);
     Route::post('/billings/{billing}/payment', [BillingController::class, 'payment']);
     Route::get('/reports/billings', [BillingReportController::class, 'index']);
-    Route::get('/reports/billings.csv', [BillingReportController::class, 'export']);
-    Route::get('/reports/billings.pdf', [BillingReportController::class, 'exportPdf']);
+    Route::post('/reports/export', [ReportExportController::class, 'store']);
+    Route::get('/reports/export/{reportJob}', [ReportExportController::class, 'show']);
+    Route::get('/reports/export/{reportJob}/download', [ReportExportController::class, 'download']);
 });

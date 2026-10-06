@@ -14,6 +14,7 @@
 |
 | O valor atualizado é arredondado para centavos. Os juros são a diferença
 | para o valor original. Sem atraso, os juros são zero.
+| Detalhe e pagamento avaliam a mesma expressão SQL do relatório.
 */
 
 return [
@@ -22,4 +23,6 @@ return [
     'volume' => (int) env('BILLING_VOLUME', 10000),
 
     'volume_customers' => (int) env('BILLING_VOLUME_CUSTOMERS', 200),
+
+    'reports_disk' => env('REPORTS_DISK', 'reports'),
 ];

@@ -15,9 +15,15 @@ docker compose up --build
 - Documentação OpenAPI: http://localhost:8000/api/documentation
 - Acesso: `admin@example.com` / `password`
 
-O Compose sobe MySQL 8.4, a API e o frontend na rede `billing`. O banco `billing` é criado no container. Os dados ficam no volume `billing_mysql`. Na primeira subida a API migra e grava o usuário de acesso. Não é preciso instalar PHP, Node ou MySQL na máquina.
+O Compose sobe MySQL 8.4, Redis, a API, o worker da fila e o frontend na rede `billing`. O banco `billing` é criado no container. Os dados ficam no volume `billing_mysql`. Os arquivos de relatório ficam no volume `billing_reports`, compartilhado pela API e pelo worker. Na primeira subida a API migra e grava o usuário de acesso. Não é preciso instalar PHP, Node ou MySQL na máquina.
 
-As portas publicadas são 8000 e 5173. O MySQL não é publicado no host. Se 8000 ou 5173 já estiverem em uso, encerre o outro processo antes de subir o Compose.
+As portas publicadas são 8000 (API), 5173 (interface) e `127.0.0.1:3306` (MySQL). Se 8000 ou 5173 já estiverem em uso, encerre o outro processo antes de subir o Compose. Se 3306 já estiver em uso, suba com outra porta:
+
+```text
+MYSQL_PUBLISH_PORT=3307 docker compose up --build
+```
+
+No PowerShell: `$env:MYSQL_PUBLISH_PORT='3307'; docker compose up --build`.
 
 Para parar sem apagar os dados:
 
@@ -27,29 +33,49 @@ docker compose down
 
 `docker compose down -v` remove também o volume do MySQL.
 
-A imagem da API instala dependências de produção. O seeder de volume usa factories e precisa das dependências de desenvolvimento, então ele roda no checkout local:
+Na primeira criação do volume, `backend/docker/mysql/init.sql` cria o banco `billing_test` e concede acesso ao usuário `billing`. Esse banco serve só à suíte MySQL e não recebe o seed da aplicação. Um volume que já existia antes desse script não o executa de novo; nesse caso o mesmo SQL precisa ser aplicado uma vez, como root do container.
+
+A imagem da API instala só dependências de produção. O seeder de volume não usa Faker, então ele roda no container. Ele não entra no seed padrão. Rodar de novo acrescenta outro lote.
+
+Volume pequeno, para conferir o fluxo:
 
 ```text
-cd backend
-composer install
-cp .env.example .env
-php artisan key:generate
-php artisan migrate --seed
-php artisan db:seed --class=BillingVolumeSeeder
+docker compose exec -e BILLING_VOLUME=100 -e BILLING_VOLUME_CUSTOMERS=10 backend php artisan db:seed --class=BillingVolumeSeeder
 ```
 
-O padrão gera 10.000 cobranças e 200 clientes. `BILLING_VOLUME` e `BILLING_VOLUME_CUSTOMERS` alteram essas quantidades. Esse seeder não entra no seed padrão.
+Volume significativo, o padrão da configuração (10.000 cobranças e 200 clientes):
+
+```text
+docker compose exec backend php artisan db:seed --class=BillingVolumeSeeder
+```
+
+Volume grande, para exercitar filtro, índice, CSV e PDF:
+
+```text
+docker compose exec -e BILLING_VOLUME=1000000 -e BILLING_VOLUME_CUSTOMERS=1000 backend php artisan db:seed --class=BillingVolumeSeeder
+```
+
+`BILLING_VOLUME` e `BILLING_VOLUME_CUSTOMERS` também podem ir no ambiente do serviço. No checkout local, com PHP e o `.env` apontando para o MySQL, o mesmo comando é `php artisan db:seed --class=BillingVolumeSeeder`.
 
 A interface local usa `frontend/.env` com `VITE_API_URL=http://localhost:8000` e `npm run dev`.
 
 ## Testes
 
-Os testes da API usam SQLite em memória e não dependem do Docker:
+Os testes da API em SQLite usam memória e não dependem do Docker. Eles cobrem autenticação, juros, pagamento, filtros, totalizadores, PDF e CSV:
 
 ```text
 cd backend
 composer test
 ```
+
+A suíte MySQL repete os mesmos testes contra o banco `billing_test`, inclusive `DATEDIFF`, `GREATEST`, `POW`, `CURDATE` e o bloqueio de pagamento concorrente. O Compose precisa estar no ar e a porta publicada precisa ser a do processo. O banco da aplicação (`billing`) não é apagado:
+
+```text
+cd backend
+composer test:mysql
+```
+
+Se o MySQL do Compose não estiver em 3306, defina `DB_PORT` antes do comando. No PowerShell: `$env:DB_PORT='3307'; composer test:mysql`.
 
 Os testes de interface usam Playwright e Chromium. Eles sobem uma API isolada em `127.0.0.1:8123` e o Vite em `127.0.0.1:5174`, então podem conviver com o ambiente em 8000 e 5173. É preciso PHP e Node na máquina:
 
@@ -62,7 +88,7 @@ npm run test:e2e
 
 ## Juros
 
-A regra ativa é `BILLING_INTEREST` em `backend/config/billing.php`. O padrão é juros compostos. `simple` troca a estratégia. As duas implementam `App\Billing\InterestStrategy`. O cálculo fica só no backend e a mesma expressão SQL alimenta a listagem, os totalizadores, o CSV e o PDF.
+A regra ativa é `BILLING_INTEREST` em `backend/config/billing.php`. O padrão é juros compostos. `simple` troca a estratégia. As duas implementam `App\Billing\InterestStrategy`. O cálculo fica só no backend. A listagem, os totalizadores, o CSV, o PDF, o detalhe da cobrança e o pagamento usam a mesma expressão SQL da estratégia ativa. Não há uma segunda fórmula em PHP. O arredondamento para centavos é o `ROUND(..., 2)` do banco. A diferença entre o valor atualizado e o original usa bcmath, sem float.
 
 Juros compostos:
 
@@ -78,7 +104,9 @@ valor_atualizado = valor_original × (1 + taxa_mensal × dias_em_atraso / 30)
 
 A taxa é uma fração: `0,02` representa 2% ao mês. O valor atualizado é arredondado para centavos. Os juros são a diferença para o valor original. Sem atraso, os juros são zero.
 
-O status gravado é `pending` ou `paid`. “Vencida” é derivada: pendente com vencimento anterior a hoje. Enquanto a cobrança está pendente, os juros são calculados na leitura com a data da aplicação. O pagamento grava a data, o valor pago e os juros daquele momento. Uma cobrança paga não volta a acumular juros. Um segundo pagamento responde 422.
+O status gravado é `pending` ou `paid`. “Vencida” é derivada: pendente com vencimento anterior a hoje. Enquanto a cobrança está pendente, os juros são calculados na leitura com a data da aplicação. O pagamento grava a data, o valor pago e os juros daquele momento. Uma cobrança paga não volta a acumular juros. Pagamento antecipado ou no vencimento grava juros zero. Pagamento atrasado grava os juros até a data informada.
+
+O registro do pagamento trava a linha com `SELECT FOR UPDATE` dentro de uma transação. A primeira requisição conclui. Uma segunda tentativa simultânea espera o lock e, depois, recebe 422 porque a cobrança já está paga. Se a espera estourar o tempo do InnoDB, a API responde 422 pedindo para tentar de novo. Um segundo pagamento de uma cobrança já paga também responde 422.
 
 ## Decisões
 
@@ -88,6 +116,7 @@ O status gravado é `pending` ou `paid`. “Vencida” é derivada: pendente com
 - A API está descrita em classes OpenAPI dedicadas. O JSON versionado fica em `backend/storage/api-docs/api-docs.json`.
 - A tela formata valores em real. A API, o CSV e o PDF usam decimais com ponto.
 - O CSV usa `;` como separador e inclui BOM UTF-8. O PDF é A4 paisagem, gerado com Dompdf.
+- A busca de cliente no formulário e no relatório consulta a API por nome ou documento. A lista não percorre todas as páginas.
 
 ## Índices
 
@@ -103,15 +132,39 @@ O relatório sempre recorta um intervalo de emissão, vencimento ou pagamento e 
 
 ## Performance
 
-A página do relatório tem 15 linhas. Filtro, ordenação e totalizadores rodam no MySQL. A página não soma os registros em PHP. O cliente é carregado junto com a cobrança, sem uma consulta por linha. A ordenação aceita só colunas da lista permitida.
+A página do relatório tem 15 linhas por padrão. O cliente pode pedir `per_page` de 1 a 100; um valor fora disso é rejeitado. Filtro, ordenação e totalizadores rodam no MySQL. A página não soma os registros em PHP. O cliente é carregado junto com a cobrança, sem uma consulta por linha. A ordenação aceita só colunas da lista permitida. Ordenar por data e `id` pode usar `filesort` depois do recorte do índice: o intervalo já está indexado e a página devolve poucas linhas, então não há um segundo índice só para evitar esse `filesort`.
 
 Com milhões de registros, o recorte por data usa o índice correspondente e a paginação devolve só a página pedida. Os totalizadores agregam o filtro inteiro numa consulta, sem materializar as linhas. Páginas muito profundas ficam mais caras com `OFFSET`. Em produção, a troca natural é paginação por cursor.
 
-O CSV percorre o resultado com `cursor()` e escreve cada linha na resposta. A página da tela é ignorada. O uso de memória no PHP acompanha uma linha, não o arquivo inteiro.
+## Exportação
 
-O PDF também lê com `cursor()`, mas o Dompdf monta o documento completo antes de enviá-lo. Ele serve para o período filtrado. Um arquivo com milhões de linhas não cabe nesse modelo. Em produção, a exportação grande iria para uma fila, em partes, ou o CSV seria o formato de volume.
+### Estratégia de geração
 
-Outras melhorias deixadas de fora porque o teste não as pede: coluna gerada para o juros, réplica de leitura, cache de totalizadores, análise de `EXPLAIN` no ambiente de staging e desligar a regeneração do Swagger a cada requisição.
+```text
+Request → ReportJob → fila Redis → worker Laravel → lotes no MySQL → arquivo → Storage
+```
+
+O botão de exportar chama `POST /api/reports/export` e recebe `202` com o `job_id`. A requisição não monta o arquivo. Um worker executa `php artisan queue:work redis`, lê os filtros gravados no `report_jobs` e gera o CSV ou o PDF. A tela consulta `GET /api/reports/export/{id}` até o status `done` e então baixa o arquivo por um endpoint autenticado.
+
+No checkout local, sem o Compose, o worker é o mesmo comando, com `QUEUE_CONNECTION=redis` e o Redis publicado em `127.0.0.1:6379`. Se essa porta já estiver em uso, suba com `REDIS_PUBLISH_PORT=6380` e aponte `REDIS_PORT` para ela. Os testes da API usam a fila `sync` e não dependem do Redis.
+
+### Grandes volumes
+
+A consulta do relatório continua no MySQL, com filtro, ordenação e os índices de data. A página da tela devolve 15 linhas. A exportação ignora essa página e percorre o filtro com `cursor()`, uma cobrança por vez. O resultado não é carregado com `get()`.
+
+O CSV escreve cada linha com `fputcsv` enquanto o `cursor()` avança. O arquivo usa BOM UTF-8 e separador `;`, no formato que o Excel em português abre. O PDF também lê com `cursor()`, uma cobrança por vez, mas o Dompdf não transmite o documento página a página: ele monta o HTML e a árvore da tabela na memória do worker antes de gravar o arquivo. Não há teto artificial de linhas. O CSV é o formato para um volume realmente grande.
+
+O worker do Compose usa a mesma imagem da API e só muda o processo. O PHP do worker tem 512 MB. Depois de cada job, se o processo passou de 480 MB, ele encerra e o Compose sobe outro. Assim um PDF pesado não deixa a fila parada. Uma geração medida de cerca de 51 mil linhas em CSV levou por volta de 9 segundos, e um PDF de 637 linhas levou por volta de 5 segundos dentro desses 512 MB. O timeout do job é 120 segundos, mais de dez vezes o pior caso medido. O `retry_after` do Redis é 150 segundos, acima desse timeout, para um segundo worker não pegar o mesmo job enquanto o primeiro ainda está gerando. São 3 tentativas, com 5 segundos entre elas. Se o processo morrer antes da última tentativa, o Redis devolve o job e o registro segue `processing` até o reprocessamento. Na última tentativa, um erro fatal grava `failed` mesmo quando o PHP não chega ao `catch`.
+
+### Storage
+
+O teste grava em `storage/app/reports/{id}.csv` ou `.pdf`, no disco `reports` do `Storage` do Laravel. API e worker compartilham esse diretório. A geração só conhece o disco configurado em `REPORTS_DISK`. Trocar esse disco para S3 depois não muda o job, o CSV nem o PDF.
+
+### Limitações
+
+Não há suporte infinito e o PDF não faz streaming ilimitado. O CSV cresce com o tempo de leitura do banco e o tamanho do arquivo, não com uma lista de registros na memória. O PDF depende do Dompdf: a partir de algumas centenas de linhas a tabela pode estourar os 512 MB do worker, e nesse caso o processamento termina como `failed` em vez de ficar preso. A aplicação não recusa um filtro por quantidade de linhas. Cada usuário só consulta e baixa os próprios processamentos. Um arquivo que sumiu do disco responde 404.
+
+Outras melhorias deixadas de fora porque o teste não as pede: paginação por cursor no lugar de `OFFSET`, coluna gerada para o juros, réplica de leitura, cache de totalizadores, análise de `EXPLAIN` no ambiente de staging e desligar a regeneração do Swagger a cada requisição.
 
 ## Fora do escopo
 

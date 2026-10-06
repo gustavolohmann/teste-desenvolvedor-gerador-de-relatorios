@@ -15,8 +15,9 @@ final class BillingReportQuery
     /**
      * @param  array{period: string, from: string, to: string, customer_id?: int|null, status?: string|null, sort?: string|null, direction?: string|null}  $filters
      */
-    public function page(array $filters): LengthAwarePaginator
+    public function page(array $filters, int $perPage = 15): LengthAwarePaginator
     {
+        $perPage = max(1, min(100, $perPage));
         $query = $this->base($filters);
         $interest = $this->interest->interestExpression();
         $query->select('billings.*')
@@ -25,7 +26,7 @@ final class BillingReportQuery
             ->with('customer:id,name');
         $this->order($query, $filters['sort'] ?? 'due_on', $filters['direction'] ?? 'asc', $interest);
 
-        return $query->paginate(15);
+        return $query->paginate($perPage);
     }
 
     /**

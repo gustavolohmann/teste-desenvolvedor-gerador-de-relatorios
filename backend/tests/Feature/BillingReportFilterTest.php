@@ -170,6 +170,41 @@ class BillingReportFilterTest extends TestCase
             ->assertJsonPath('errors.customer_id.0', 'Informe um cliente cadastrado.');
     }
 
+    public function test_per_page_limits_the_page_and_keeps_the_total(): void
+    {
+        foreach (range(1, 4) as $number) {
+            $this->charge($this->ana, 'Pagina '.$number, '2027-04-01', '2027-04-02', '10.00');
+        }
+
+        $this->report([
+            'period' => 'due',
+            'from' => '2027-04-02',
+            'to' => '2027-04-02',
+            'per_page' => 2,
+        ])->assertOk()
+            ->assertJsonPath('meta.per_page', 2)
+            ->assertJsonPath('meta.total', 4)
+            ->assertJsonPath('meta.last_page', 2)
+            ->assertJsonCount(2, 'data');
+    }
+
+    public function test_per_page_outside_the_limit_is_rejected(): void
+    {
+        $query = ['period' => 'due', 'from' => '2026-09-01', 'to' => '2026-09-30'];
+
+        $this->report($query + ['per_page' => 0])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.per_page.0', 'Informe um tamanho de página entre 1 e 100.');
+
+        $this->report($query + ['per_page' => 101])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.per_page.0', 'Informe um tamanho de página entre 1 e 100.');
+
+        $this->report($query + ['per_page' => 'muitas'])
+            ->assertUnprocessable()
+            ->assertJsonPath('errors.per_page.0', 'Informe um tamanho de página válido.');
+    }
+
     /**
      * @param  array<string, mixed>  $query
      */

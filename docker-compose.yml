@@ -8,8 +8,11 @@ services:
       MYSQL_USER: billing
       MYSQL_PASSWORD: secret
       MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "127.0.0.1:${MYSQL_PUBLISH_PORT:-3306}:3306"
     volumes:
       - billing_mysql:/var/lib/mysql
+      - ./backend/docker/mysql/init.sql:/docker-entrypoint-initdb.d/01-billing-test.sql:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ubilling", "-psecret"]
       interval: 5s
@@ -19,12 +22,27 @@ services:
     networks:
       - billing
 
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "127.0.0.1:${REDIS_PUBLISH_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - billing
+
   backend:
     build: ./backend
+    image: billing-app:local
     depends_on:
       mysql:
         condition: service_healthy
-    environment:
+      redis:
+        condition: service_healthy
+    environment: &billing-env
       APP_NAME: "Gerador de Relatorios"
       APP_ENV: local
       APP_KEY: base64:eEFG+Uc5BFAe6cqeD/kGx2JAb5RHXd0qRNznQlKsaVs=
@@ -40,19 +58,41 @@ services:
       DB_PASSWORD: secret
       SESSION_DRIVER: database
       CACHE_STORE: database
-      QUEUE_CONNECTION: database
+      QUEUE_CONNECTION: redis
+      REDIS_CLIENT: predis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_QUEUE_RETRY_AFTER: 150
       BILLING_INTEREST: compound
       L5_SWAGGER_GENERATE_ALWAYS: "true"
       L5_SWAGGER_CONST_HOST: http://localhost:8000
       PHP_CLI_SERVER_WORKERS: 4
     ports:
       - "8000:8000"
+    volumes:
+      - billing_reports:/var/www/html/storage/app/reports
     healthcheck:
       test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/health"]
       interval: 5s
       timeout: 5s
       retries: 20
       start_period: 20s
+    networks:
+      - billing
+
+  queue:
+    image: billing-app:local
+    restart: unless-stopped
+    entrypoint: ["sh", "docker/worker.sh"]
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      <<: *billing-env
+    volumes:
+      - billing_reports:/var/www/html/storage/app/reports
     networks:
       - billing
 
@@ -76,3 +116,5 @@ networks:
 volumes:
   billing_mysql:
     name: billing_mysql
+  billing_reports:
+    name: billing_reports

@@ -45,6 +45,7 @@ class BillingReportRequest extends FormRequest
             ])],
             'direction' => ['nullable', Rule::in(['asc', 'desc'])],
             'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ];
     }
 
@@ -65,6 +66,9 @@ class BillingReportRequest extends FormRequest
             'status.in' => 'Informe um status válido.',
             'sort.in' => 'Informe uma ordenação válida.',
             'direction.in' => 'Informe a direção da ordenação.',
+            'per_page.integer' => 'Informe um tamanho de página válido.',
+            'per_page.min' => 'Informe um tamanho de página entre 1 e 100.',
+            'per_page.max' => 'Informe um tamanho de página entre 1 e 100.',
         ];
     }
 

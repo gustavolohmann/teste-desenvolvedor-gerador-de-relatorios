@@ -33,6 +33,7 @@ use OpenApi\Attributes as OA;
         new OA\Parameter(name: 'sort', in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['customer', 'description', 'issued_on', 'due_on', 'paid_on', 'status', 'original_amount', 'interest_amount', 'updated_amount', 'amount_paid'])),
         new OA\Parameter(name: 'direction', in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['asc', 'desc'])),
         new OA\Parameter(name: 'page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', minimum: 1)),
+        new OA\Parameter(name: 'per_page', in: 'query', required: false, description: 'Padrão 15. Máximo 100.', schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 100, default: 15)),
     ],
     responses: [
         new OA\Response(
@@ -62,48 +63,89 @@ use OpenApi\Attributes as OA;
         new OA\Response(response: 422, description: 'Filtros inválidos'),
     ],
 )]
-#[OA\Get(
-    path: '/api/reports/billings.csv',
-    operationId: 'exportBillingReportCsv',
-    summary: 'Exporta o relatório em CSV',
-    description: 'Usa os mesmos filtros da consulta. O arquivo traz o período, os filtros, as cobranças e os totalizadores. A geração é em fluxo.',
+#[OA\Post(
+    path: '/api/reports/export',
+    operationId: 'createBillingReportExport',
+    summary: 'Enfileira a exportação do relatório',
+    description: 'Cria um processamento com os filtros da consulta e devolve 202. O arquivo é gerado pelo worker, em CSV ou PDF, fora desta requisição.',
     security: [['bearerAuth' => []]],
     tags: ['Relatórios'],
-    parameters: [
-        new OA\Parameter(name: 'period', in: 'query', required: true, schema: new OA\Schema(type: 'string', enum: ['issued', 'due', 'paid'])),
-        new OA\Parameter(name: 'from', in: 'query', required: true, schema: new OA\Schema(type: 'string', format: 'date')),
-        new OA\Parameter(name: 'to', in: 'query', required: true, schema: new OA\Schema(type: 'string', format: 'date')),
-        new OA\Parameter(name: 'customer_id', in: 'query', required: false, schema: new OA\Schema(type: 'integer')),
-        new OA\Parameter(name: 'status', in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['pending', 'overdue', 'paid'])),
-        new OA\Parameter(name: 'sort', in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['customer', 'description', 'issued_on', 'due_on', 'paid_on', 'status', 'original_amount', 'interest_amount', 'updated_amount', 'amount_paid'])),
-        new OA\Parameter(name: 'direction', in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['asc', 'desc'])),
-    ],
+    requestBody: new OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['period', 'from', 'to', 'format'],
+            properties: [
+                new OA\Property(property: 'period', type: 'string', enum: ['issued', 'due', 'paid']),
+                new OA\Property(property: 'from', type: 'string', format: 'date'),
+                new OA\Property(property: 'to', type: 'string', format: 'date'),
+                new OA\Property(property: 'customer_id', type: 'integer', nullable: true),
+                new OA\Property(property: 'status', type: 'string', nullable: true, enum: ['pending', 'overdue', 'paid']),
+                new OA\Property(property: 'sort', type: 'string'),
+                new OA\Property(property: 'direction', type: 'string', enum: ['asc', 'desc']),
+                new OA\Property(property: 'format', type: 'string', enum: ['csv', 'pdf']),
+            ],
+            type: 'object',
+        ),
+    ),
     responses: [
-        new OA\Response(response: 200, description: 'Arquivo CSV', content: new OA\MediaType(mediaType: 'text/csv')),
+        new OA\Response(
+            response: 202,
+            description: 'Exportação aceita',
+            content: new OA\JsonContent(
+                required: ['job_id'],
+                properties: [
+                    new OA\Property(property: 'job_id', type: 'integer', example: 1),
+                ],
+                type: 'object',
+            ),
+        ),
         new OA\Response(response: 401, description: 'Não autenticado'),
         new OA\Response(response: 422, description: 'Filtros inválidos'),
     ],
 )]
 #[OA\Get(
-    path: '/api/reports/billings.pdf',
-    operationId: 'exportBillingReportPdf',
-    summary: 'Exporta o relatório em PDF',
-    description: 'Usa os mesmos filtros da consulta. O arquivo traz o período, os filtros, as cobranças e os totalizadores. As cobranças são lidas em cursor.',
+    path: '/api/reports/export/{reportJob}',
+    operationId: 'showBillingReportExport',
+    summary: 'Consulta o processamento da exportação',
     security: [['bearerAuth' => []]],
     tags: ['Relatórios'],
     parameters: [
-        new OA\Parameter(name: 'period', in: 'query', required: true, schema: new OA\Schema(type: 'string', enum: ['issued', 'due', 'paid'])),
-        new OA\Parameter(name: 'from', in: 'query', required: true, schema: new OA\Schema(type: 'string', format: 'date')),
-        new OA\Parameter(name: 'to', in: 'query', required: true, schema: new OA\Schema(type: 'string', format: 'date')),
-        new OA\Parameter(name: 'customer_id', in: 'query', required: false, schema: new OA\Schema(type: 'integer')),
-        new OA\Parameter(name: 'status', in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['pending', 'overdue', 'paid'])),
-        new OA\Parameter(name: 'sort', in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['customer', 'description', 'issued_on', 'due_on', 'paid_on', 'status', 'original_amount', 'interest_amount', 'updated_amount', 'amount_paid'])),
-        new OA\Parameter(name: 'direction', in: 'query', required: false, schema: new OA\Schema(type: 'string', enum: ['asc', 'desc'])),
+        new OA\Parameter(name: 'reportJob', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
     ],
     responses: [
-        new OA\Response(response: 200, description: 'Arquivo PDF', content: new OA\MediaType(mediaType: 'application/pdf')),
+        new OA\Response(
+            response: 200,
+            description: 'Estado do processamento',
+            content: new OA\JsonContent(
+                required: ['id', 'status'],
+                properties: [
+                    new OA\Property(property: 'id', type: 'integer', example: 1),
+                    new OA\Property(property: 'status', type: 'string', enum: ['pending', 'processing', 'done', 'failed']),
+                    new OA\Property(property: 'download_url', type: 'string', example: '/api/reports/export/1/download'),
+                    new OA\Property(property: 'error', type: 'string'),
+                ],
+                type: 'object',
+            ),
+        ),
         new OA\Response(response: 401, description: 'Não autenticado'),
-        new OA\Response(response: 422, description: 'Filtros inválidos'),
+        new OA\Response(response: 404, description: 'Registro não encontrado'),
+    ],
+)]
+#[OA\Get(
+    path: '/api/reports/export/{reportJob}/download',
+    operationId: 'downloadBillingReportExport',
+    summary: 'Baixa o arquivo gerado',
+    description: 'Disponível quando o processamento está concluído. O caminho interno do arquivo não é exposto.',
+    security: [['bearerAuth' => []]],
+    tags: ['Relatórios'],
+    parameters: [
+        new OA\Parameter(name: 'reportJob', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
+    ],
+    responses: [
+        new OA\Response(response: 200, description: 'Arquivo CSV ou PDF'),
+        new OA\Response(response: 401, description: 'Não autenticado'),
+        new OA\Response(response: 404, description: 'Registro ou arquivo não encontrado'),
+        new OA\Response(response: 422, description: 'Relatório ainda não está pronto'),
     ],
 )]
 class ReportDocumentation {}

@@ -888,6 +888,18 @@
                             "type": "integer",
                             "minimum": 1
                         }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "description": "Padrão 15. Máximo 100.",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "default": 15,
+                            "maximum": 100,
+                            "minimum": 1
+                        }
                     }
                 ],
                 "responses": {
@@ -958,105 +970,96 @@
                 ]
             }
         },
-        "/api/reports/billings.csv": {
-            "get": {
+        "/api/reports/export": {
+            "post": {
                 "tags": [
                     "Relatórios"
                 ],
-                "summary": "Exporta o relatório em CSV",
-                "description": "Usa os mesmos filtros da consulta. O arquivo traz o período, os filtros, as cobranças e os totalizadores. A geração é em fluxo.",
-                "operationId": "exportBillingReportCsv",
-                "parameters": [
-                    {
-                        "name": "period",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "issued",
-                                "due",
-                                "paid"
-                            ]
-                        }
-                    },
-                    {
-                        "name": "from",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "date"
-                        }
-                    },
-                    {
-                        "name": "to",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "date"
-                        }
-                    },
-                    {
-                        "name": "customer_id",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "status",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "pending",
-                                "overdue",
-                                "paid"
-                            ]
-                        }
-                    },
-                    {
-                        "name": "sort",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "customer",
-                                "description",
-                                "issued_on",
-                                "due_on",
-                                "paid_on",
-                                "status",
-                                "original_amount",
-                                "interest_amount",
-                                "updated_amount",
-                                "amount_paid"
-                            ]
-                        }
-                    },
-                    {
-                        "name": "direction",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "asc",
-                                "desc"
-                            ]
+                "summary": "Enfileira a exportação do relatório",
+                "description": "Cria um processamento com os filtros da consulta e devolve 202. O arquivo é gerado pelo worker, em CSV ou PDF, fora desta requisição.",
+                "operationId": "createBillingReportExport",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "period",
+                                    "from",
+                                    "to",
+                                    "format"
+                                ],
+                                "properties": {
+                                    "period": {
+                                        "type": "string",
+                                        "enum": [
+                                            "issued",
+                                            "due",
+                                            "paid"
+                                        ]
+                                    },
+                                    "from": {
+                                        "type": "string",
+                                        "format": "date"
+                                    },
+                                    "to": {
+                                        "type": "string",
+                                        "format": "date"
+                                    },
+                                    "customer_id": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "status": {
+                                        "type": "string",
+                                        "nullable": true,
+                                        "enum": [
+                                            "pending",
+                                            "overdue",
+                                            "paid"
+                                        ]
+                                    },
+                                    "sort": {
+                                        "type": "string"
+                                    },
+                                    "direction": {
+                                        "type": "string",
+                                        "enum": [
+                                            "asc",
+                                            "desc"
+                                        ]
+                                    },
+                                    "format": {
+                                        "type": "string",
+                                        "enum": [
+                                            "csv",
+                                            "pdf"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
                         }
                     }
-                ],
+                },
                 "responses": {
-                    "200": {
-                        "description": "Arquivo CSV",
+                    "202": {
+                        "description": "Exportação aceita",
                         "content": {
-                            "text/csv": {}
+                            "application/json": {
+                                "schema": {
+                                    "required": [
+                                        "job_id"
+                                    ],
+                                    "properties": {
+                                        "job_id": {
+                                            "type": "integer",
+                                            "example": 1
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
                         }
                     },
                     "401": {
@@ -1073,112 +1076,104 @@
                 ]
             }
         },
-        "/api/reports/billings.pdf": {
+        "/api/reports/export/{reportJob}": {
             "get": {
                 "tags": [
                     "Relatórios"
                 ],
-                "summary": "Exporta o relatório em PDF",
-                "description": "Usa os mesmos filtros da consulta. O arquivo traz o período, os filtros, as cobranças e os totalizadores. As cobranças são lidas em cursor.",
-                "operationId": "exportBillingReportPdf",
+                "summary": "Consulta o processamento da exportação",
+                "operationId": "showBillingReportExport",
                 "parameters": [
                     {
-                        "name": "period",
-                        "in": "query",
+                        "name": "reportJob",
+                        "in": "path",
                         "required": true,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "issued",
-                                "due",
-                                "paid"
-                            ]
-                        }
-                    },
-                    {
-                        "name": "from",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "date"
-                        }
-                    },
-                    {
-                        "name": "to",
-                        "in": "query",
-                        "required": true,
-                        "schema": {
-                            "type": "string",
-                            "format": "date"
-                        }
-                    },
-                    {
-                        "name": "customer_id",
-                        "in": "query",
-                        "required": false,
                         "schema": {
                             "type": "integer"
-                        }
-                    },
-                    {
-                        "name": "status",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "pending",
-                                "overdue",
-                                "paid"
-                            ]
-                        }
-                    },
-                    {
-                        "name": "sort",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "customer",
-                                "description",
-                                "issued_on",
-                                "due_on",
-                                "paid_on",
-                                "status",
-                                "original_amount",
-                                "interest_amount",
-                                "updated_amount",
-                                "amount_paid"
-                            ]
-                        }
-                    },
-                    {
-                        "name": "direction",
-                        "in": "query",
-                        "required": false,
-                        "schema": {
-                            "type": "string",
-                            "enum": [
-                                "asc",
-                                "desc"
-                            ]
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Arquivo PDF",
+                        "description": "Estado do processamento",
                         "content": {
-                            "application/pdf": {}
+                            "application/json": {
+                                "schema": {
+                                    "required": [
+                                        "id",
+                                        "status"
+                                    ],
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "status": {
+                                            "type": "string",
+                                            "enum": [
+                                                "pending",
+                                                "processing",
+                                                "done",
+                                                "failed"
+                                            ]
+                                        },
+                                        "download_url": {
+                                            "type": "string",
+                                            "example": "/api/reports/export/1/download"
+                                        },
+                                        "error": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
                         }
                     },
                     "401": {
                         "description": "Não autenticado"
                     },
+                    "404": {
+                        "description": "Registro não encontrado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/reports/export/{reportJob}/download": {
+            "get": {
+                "tags": [
+                    "Relatórios"
+                ],
+                "summary": "Baixa o arquivo gerado",
+                "description": "Disponível quando o processamento está concluído. O caminho interno do arquivo não é exposto.",
+                "operationId": "downloadBillingReportExport",
+                "parameters": [
+                    {
+                        "name": "reportJob",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Arquivo CSV ou PDF"
+                    },
+                    "401": {
+                        "description": "Não autenticado"
+                    },
+                    "404": {
+                        "description": "Registro ou arquivo não encontrado"
+                    },
                     "422": {
-                        "description": "Filtros inválidos"
+                        "description": "Relatório ainda não está pronto"
                     }
                 },
                 "security": [

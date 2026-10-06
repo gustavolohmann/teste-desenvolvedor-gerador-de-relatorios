@@ -25,7 +25,9 @@ final class BillingReportPdf
         $options->set('isHtml5ParserEnabled', true);
 
         $dompdf = new Dompdf($options);
-        $dompdf->loadHtml($this->html($filters), 'UTF-8');
+        $html = $this->html($filters);
+        $dompdf->loadHtml($html, 'UTF-8');
+        unset($html);
         $dompdf->setPaper('A4', 'landscape');
         $dompdf->render();
         fwrite($output, $dompdf->output());

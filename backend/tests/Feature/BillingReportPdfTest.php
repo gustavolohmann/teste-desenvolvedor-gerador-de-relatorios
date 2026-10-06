@@ -8,6 +8,7 @@ use App\Models\Customer;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -25,6 +26,7 @@ class BillingReportPdfTest extends TestCase
     {
         parent::setUp();
 
+        Storage::fake('reports');
         Sanctum::actingAs(User::factory()->create());
         $today = Carbon::today();
         $this->from = $today->copy()->subDays(40)->toDateString();
@@ -123,14 +125,36 @@ class BillingReportPdfTest extends TestCase
         $this->assertStringContainsString('350.00', $text);
     }
 
+    public function test_pdf_breaks_onto_another_page(): void
+    {
+        $due = Carbon::parse('2028-06-01');
+
+        foreach (range(1, 40) as $number) {
+            $this->charge($this->ana, sprintf('Folha %02d', $number), $due, $due, '10.00');
+        }
+
+        $pdf = $this->pdf([
+            'period' => 'due',
+            'from' => '2028-06-01',
+            'to' => '2028-06-01',
+        ]);
+        preg_match_all('/\/Type\s*\/Page(?!s)/', $pdf, $pages);
+
+        $this->assertGreaterThanOrEqual(2, count($pages[0]));
+        $text = $this->pdfText($pdf);
+        $this->assertStringContainsString('Folha 01', $text);
+        $this->assertStringContainsString('Folha 40', $text);
+        $this->assertStringContainsString('Totalizadores', $text);
+        $this->assertSame(1, substr_count($text, 'Folha 01'));
+    }
+
     public function test_invalid_pdf_filters_are_rejected(): void
     {
-        $this->get('/api/reports/billings.pdf?'.http_build_query([
+        $this->postJson('/api/reports/export', [
             'period' => 'due',
             'from' => '2026-09-30',
             'to' => '2026-09-01',
-        ]), [
-            'Accept' => 'application/pdf',
+            'format' => 'pdf',
         ])->assertUnprocessable()
             ->assertJsonPath('errors.to.0', 'A data final deve ser igual ou posterior à inicial.');
     }
@@ -140,7 +164,12 @@ class BillingReportPdfTest extends TestCase
      */
     private function pdf(array $query): string
     {
-        $response = $this->get('/api/reports/billings.pdf?'.http_build_query($query), [
+        $created = $this->postJson('/api/reports/export', [
+            ...$query,
+            'format' => 'pdf',
+        ]);
+        $created->assertAccepted();
+        $response = $this->get('/api/reports/export/'.$created->json('job_id').'/download', [
             'Accept' => 'application/pdf',
         ]);
 

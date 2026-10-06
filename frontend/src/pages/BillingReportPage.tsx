@@ -37,10 +37,12 @@ export function BillingReportPage() {
   const page = Math.max(1, Number(params.get('page') ?? '1') || 1)
   const queryKey = `${period}|${from}|${to}|${customerId}|${status}|${sort}|${direction}|${page}`
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [customerQuery, setCustomerQuery] = useState('')
   const [report, setReport] = useState<BillingReport | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [exporting, setExporting] = useState<'csv' | 'pdf' | null>(null)
+  const [exportState, setExportState] = useState<'idle' | 'generating' | 'completed' | 'failed'>('idle')
   const [shownKey, setShownKey] = useState(queryKey)
 
   if (shownKey !== queryKey) {
@@ -52,7 +54,7 @@ export function BillingReportPage() {
   useEffect(() => {
     const controller = new AbortController()
 
-    listCustomerOptions(controller.signal)
+    listCustomerOptions(controller.signal, customerQuery)
       .then((options) => {
         if (!controller.signal.aborted) {
           setCustomers(options)
@@ -61,7 +63,7 @@ export function BillingReportPage() {
       .catch(() => undefined)
 
     return () => controller.abort()
-  }, [])
+  }, [customerQuery])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -117,12 +119,15 @@ export function BillingReportPage() {
 
   async function handleExport(format: 'csv' | 'pdf') {
     setExporting(format)
+    setExportState('generating')
     setError(null)
 
     try {
       const download = format === 'pdf' ? downloadBillingReportPdf : downloadBillingReport
       await download({ period, from, to, customerId, status, sort, direction, page })
+      setExportState('completed')
     } catch (reason) {
+      setExportState('failed')
       setError(reason instanceof ApiError ? reason.message : 'A API não respondeu.')
     } finally {
       setExporting(null)
@@ -157,6 +162,15 @@ export function BillingReportPage() {
           Até
           <input id="to" type="date" value={to} onChange={(event) => update({ to: event.target.value })} required />
         </label>
+        <label className="field" htmlFor="customer_query">
+          Buscar cliente
+          <input
+            id="customer_query"
+            value={customerQuery}
+            onChange={(event) => setCustomerQuery(event.target.value)}
+            placeholder="Nome ou documento"
+          />
+        </label>
         <label className="field" htmlFor="customer_id">
           Cliente
           <select id="customer_id" value={customerId} onChange={(event) => update({ customer_id: event.target.value })}>
@@ -180,12 +194,14 @@ export function BillingReportPage() {
       </form>
       <div className="toolbar actions">
         <button className="button button-secondary" type="button" onClick={() => handleExport('csv')} disabled={exporting !== null}>
-          {exporting === 'csv' ? 'Exportando.' : 'Exportar CSV'}
+          {exporting === 'csv' ? 'Gerando relatório...' : 'Exportar CSV'}
         </button>
         <button className="button button-secondary" type="button" onClick={() => handleExport('pdf')} disabled={exporting !== null}>
-          {exporting === 'pdf' ? 'Exportando.' : 'Exportar PDF'}
+          {exporting === 'pdf' ? 'Gerando relatório...' : 'Exportar PDF'}
         </button>
       </div>
+      {exportState === 'generating' ? <p className="status">Gerando relatório...</p> : null}
+      {exportState === 'completed' ? <p className="status">Relatório pronto.</p> : null}
       {loading ? <p className="status">Carregando relatório.</p> : null}
       {error ? (
         <p className="alert" role="alert">
