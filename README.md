@@ -1,3 +1,128 @@
+# Gerador de relatórios
+
+Aplicação de faturamento com autenticação e relatório por período. O backend é um monólito Laravel. O frontend React conversa só pela API. O enunciado original do teste está no final deste arquivo.
+
+## Executar
+
+Na raiz do repositório:
+
+```text
+docker compose up --build
+```
+
+- Interface: http://localhost:5173
+- API: http://localhost:8000
+- Documentação OpenAPI: http://localhost:8000/api/documentation
+- Acesso: `admin@example.com` / `password`
+
+O Compose sobe MySQL 8.4, a API e o frontend na rede `billing`. O banco `billing` é criado no container. Os dados ficam no volume `billing_mysql`. Na primeira subida a API migra e grava o usuário de acesso. Não é preciso instalar PHP, Node ou MySQL na máquina.
+
+As portas publicadas são 8000 e 5173. O MySQL não é publicado no host. Se 8000 ou 5173 já estiverem em uso, encerre o outro processo antes de subir o Compose.
+
+Para parar sem apagar os dados:
+
+```text
+docker compose down
+```
+
+`docker compose down -v` remove também o volume do MySQL.
+
+A imagem da API instala dependências de produção. O seeder de volume usa factories e precisa das dependências de desenvolvimento, então ele roda no checkout local:
+
+```text
+cd backend
+composer install
+cp .env.example .env
+php artisan key:generate
+php artisan migrate --seed
+php artisan db:seed --class=BillingVolumeSeeder
+```
+
+O padrão gera 10.000 cobranças e 200 clientes. `BILLING_VOLUME` e `BILLING_VOLUME_CUSTOMERS` alteram essas quantidades. Esse seeder não entra no seed padrão.
+
+A interface local usa `frontend/.env` com `VITE_API_URL=http://localhost:8000` e `npm run dev`.
+
+## Testes
+
+Os testes da API usam SQLite em memória e não dependem do Docker:
+
+```text
+cd backend
+composer test
+```
+
+Os testes de interface usam Playwright e Chromium. Eles sobem uma API isolada em `127.0.0.1:8123` e o Vite em `127.0.0.1:5174`, então podem conviver com o ambiente em 8000 e 5173. É preciso PHP e Node na máquina:
+
+```text
+cd frontend
+npm ci
+npx playwright install chromium
+npm run test:e2e
+```
+
+## Juros
+
+A regra ativa é `BILLING_INTEREST` em `backend/config/billing.php`. O padrão é juros compostos. `simple` troca a estratégia. As duas implementam `App\Billing\InterestStrategy`. O cálculo fica só no backend e a mesma expressão SQL alimenta a listagem, os totalizadores, o CSV e o PDF.
+
+Juros compostos:
+
+```text
+valor_atualizado = valor_original × (1 + taxa_mensal) ^ (dias_em_atraso / 30)
+```
+
+Juros simples:
+
+```text
+valor_atualizado = valor_original × (1 + taxa_mensal × dias_em_atraso / 30)
+```
+
+A taxa é uma fração: `0,02` representa 2% ao mês. O valor atualizado é arredondado para centavos. Os juros são a diferença para o valor original. Sem atraso, os juros são zero.
+
+O status gravado é `pending` ou `paid`. “Vencida” é derivada: pendente com vencimento anterior a hoje. Enquanto a cobrança está pendente, os juros são calculados na leitura com a data da aplicação. O pagamento grava a data, o valor pago e os juros daquele momento. Uma cobrança paga não volta a acumular juros. Um segundo pagamento responde 422.
+
+## Decisões
+
+- Autenticação por token Bearer do Laravel Sanctum. Não há cadastro público.
+- Clientes e cobranças não têm exclusão. Documento do cliente é único.
+- A regra de juros, o pagamento e a consulta do relatório ficam em `App\Billing`. Os controllers só recebem a requisição e devolvem o recurso.
+- A API está descrita em classes OpenAPI dedicadas. O JSON versionado fica em `backend/storage/api-docs/api-docs.json`.
+- A tela formata valores em real. A API, o CSV e o PDF usam decimais com ponto.
+- O CSV usa `;` como separador e inclui BOM UTF-8. O PDF é A4 paisagem, gerado com Dompdf.
+
+## Índices
+
+A migração `2026_10_06_050000_add_billing_report_indexes` cria três índices em `billings`:
+
+| Índice | Colunas |
+| --- | --- |
+| `billings_issued_report_index` | `issued_on`, `customer_id`, `status` |
+| `billings_due_report_index` | `due_on`, `customer_id`, `status` |
+| `billings_paid_report_index` | `paid_on`, `customer_id`, `status` |
+
+O relatório sempre recorta um intervalo de emissão, vencimento ou pagamento e pode restringir cliente e status. A data lidera o índice para o intervalo. Cliente e status completam os filtros de igualdade sem varrer a tabela. Há um índice para cada data porque cada execução usa só uma delas.
+
+## Performance
+
+A página do relatório tem 15 linhas. Filtro, ordenação e totalizadores rodam no MySQL. A página não soma os registros em PHP. O cliente é carregado junto com a cobrança, sem uma consulta por linha. A ordenação aceita só colunas da lista permitida.
+
+Com milhões de registros, o recorte por data usa o índice correspondente e a paginação devolve só a página pedida. Os totalizadores agregam o filtro inteiro numa consulta, sem materializar as linhas. Páginas muito profundas ficam mais caras com `OFFSET`. Em produção, a troca natural é paginação por cursor.
+
+O CSV percorre o resultado com `cursor()` e escreve cada linha na resposta. A página da tela é ignorada. O uso de memória no PHP acompanha uma linha, não o arquivo inteiro.
+
+O PDF também lê com `cursor()`, mas o Dompdf monta o documento completo antes de enviá-lo. Ele serve para o período filtrado. Um arquivo com milhões de linhas não cabe nesse modelo. Em produção, a exportação grande iria para uma fila, em partes, ou o CSV seria o formato de volume.
+
+Outras melhorias deixadas de fora porque o teste não as pede: coluna gerada para o juros, réplica de leitura, cache de totalizadores, análise de `EXPLAIN` no ambiente de staging e desligar a regeneração do Swagger a cada requisição.
+
+## Fora do escopo
+
+Não há perfis de acesso, cache de relatório, pipeline de integração contínua nem observabilidade. A documentação da API e os testes de interface com Playwright estão incluídos.
+
+O desenvolvimento usou o Cursor. As instruções para os agentes estão em `AGENTS.md`.
+
+---
+
+# Enunciado
+
 # Teste Técnico — Desenvolvedor Fullstack
 
 ## Objetivo

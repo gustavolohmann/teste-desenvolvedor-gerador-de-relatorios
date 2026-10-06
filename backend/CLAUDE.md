@@ -1,1 +1,1 @@
-Leia `AGENTS.md` neste diretório antes de alterar a API.
+Leia `../AGENTS.md` na raiz do repositório antes de alterar a API.

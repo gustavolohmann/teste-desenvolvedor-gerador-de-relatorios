@@ -1,7 +1,5 @@
 # API
 
-Aplicação Laravel desta API. A interface React fica em `../frontend`.
+Aplicação Laravel. A interface React fica em `../frontend`.
 
-Copie `.env.example` para `.env`, gere a chave da aplicação e aponte `DB_*` para o MySQL antes de migrar.
-
-O seeder cria o usuário `admin@example.com` com a senha `password`. Não há cadastro público.
+O modo de subir o Docker, rodar os testes e o seeder de volume está no `README.md` da raiz. O acesso inicial é `admin@example.com` / `password`. Não há cadastro público.
