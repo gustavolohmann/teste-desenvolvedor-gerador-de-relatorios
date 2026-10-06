@@ -24,7 +24,7 @@ export function HomePage() {
           {notice}
         </p>
       ) : null}
-      <p className="lede">O cadastro de clientes fica no menu acima.</p>
+      <p className="lede">Clientes e cobranças ficam no menu acima.</p>
     </Sheet>
   )
 }

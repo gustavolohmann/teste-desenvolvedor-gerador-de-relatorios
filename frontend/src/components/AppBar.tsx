@@ -25,6 +25,7 @@ export function AppBar() {
       <nav className="topbar-links" aria-label="Principal">
         <NavLink to="/">Início</NavLink>
         <NavLink to="/clientes">Clientes</NavLink>
+        <NavLink to="/cobrancas">Cobranças</NavLink>
       </nav>
       <button className="button button-ghost" type="button" onClick={handleLogout} disabled={pending}>
         {pending ? 'Saindo.' : 'Sair'}

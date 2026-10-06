@@ -1,4 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router'
+import { BillingDetailPage } from './pages/BillingDetailPage'
+import { BillingFormPage } from './pages/BillingFormPage'
+import { BillingListPage } from './pages/BillingListPage'
 import { CustomerDetailPage } from './pages/CustomerDetailPage'
 import { CustomerFormPage } from './pages/CustomerFormPage'
 import { CustomerListPage } from './pages/CustomerListPage'
@@ -16,6 +19,10 @@ export default function App() {
         <Route path="/clientes/novo" element={<CustomerFormPage />} />
         <Route path="/clientes/:id" element={<CustomerDetailPage />} />
         <Route path="/clientes/:id/editar" element={<CustomerFormPage />} />
+        <Route path="/cobrancas" element={<BillingListPage />} />
+        <Route path="/cobrancas/nova" element={<BillingFormPage />} />
+        <Route path="/cobrancas/:id" element={<BillingDetailPage />} />
+        <Route path="/cobrancas/:id/editar" element={<BillingFormPage />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

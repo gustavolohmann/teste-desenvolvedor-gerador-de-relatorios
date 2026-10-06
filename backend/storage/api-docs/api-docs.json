@@ -297,6 +297,199 @@
                 ]
             }
         },
+        "/api/billings": {
+            "get": {
+                "tags": [
+                    "Cobranças"
+                ],
+                "summary": "Lista cobranças",
+                "operationId": "listBillings",
+                "parameters": [
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Página de cobranças",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ],
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Billing"
+                                            }
+                                        },
+                                        "meta": {
+                                            "required": [
+                                                "current_page",
+                                                "last_page",
+                                                "per_page",
+                                                "total"
+                                            ],
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "example": 15
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Não autenticado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Cobranças"
+                ],
+                "summary": "Cadastra uma cobrança",
+                "operationId": "createBilling",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BillingInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Cobrança cadastrada"
+                    },
+                    "401": {
+                        "description": "Não autenticado"
+                    },
+                    "422": {
+                        "description": "Dados inválidos"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/billings/{billing}": {
+            "get": {
+                "tags": [
+                    "Cobranças"
+                ],
+                "summary": "Visualiza uma cobrança",
+                "operationId": "showBilling",
+                "parameters": [
+                    {
+                        "name": "billing",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Cobrança encontrada"
+                    },
+                    "401": {
+                        "description": "Não autenticado"
+                    },
+                    "404": {
+                        "description": "Registro não encontrado"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "put": {
+                "tags": [
+                    "Cobranças"
+                ],
+                "summary": "Edita uma cobrança",
+                "operationId": "updateBilling",
+                "parameters": [
+                    {
+                        "name": "billing",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BillingInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Cobrança atualizada"
+                    },
+                    "401": {
+                        "description": "Não autenticado"
+                    },
+                    "404": {
+                        "description": "Registro não encontrado"
+                    },
+                    "422": {
+                        "description": "Dados inválidos"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/customers": {
             "get": {
                 "tags": [
@@ -311,6 +504,16 @@
                         "required": false,
                         "schema": {
                             "type": "integer",
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "per_page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "maximum": 100,
                             "minimum": 1
                         }
                     }
@@ -538,6 +741,146 @@
     },
     "components": {
         "schemas": {
+            "BillingCustomer": {
+                "required": [
+                    "id",
+                    "name"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "name": {
+                        "type": "string",
+                        "example": "Maria Silva"
+                    }
+                },
+                "type": "object"
+            },
+            "Billing": {
+                "required": [
+                    "id",
+                    "customer_id",
+                    "customer",
+                    "description",
+                    "original_amount",
+                    "issued_on",
+                    "due_on",
+                    "paid_on",
+                    "monthly_interest_rate",
+                    "status"
+                ],
+                "properties": {
+                    "id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "customer_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "customer": {
+                        "$ref": "#/components/schemas/BillingCustomer"
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Mensalidade de outubro"
+                    },
+                    "original_amount": {
+                        "type": "string",
+                        "example": "150.00"
+                    },
+                    "issued_on": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-10-01"
+                    },
+                    "due_on": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-10-10"
+                    },
+                    "paid_on": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-10-09",
+                        "nullable": true
+                    },
+                    "monthly_interest_rate": {
+                        "description": "Taxa decimal. 0.02 equivale a 2% ao mês.",
+                        "type": "string",
+                        "example": "0.020000"
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "pending",
+                        "enum": [
+                            "pending",
+                            "paid"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
+            "BillingInput": {
+                "required": [
+                    "customer_id",
+                    "description",
+                    "original_amount",
+                    "issued_on",
+                    "due_on",
+                    "monthly_interest_rate",
+                    "status"
+                ],
+                "properties": {
+                    "customer_id": {
+                        "type": "integer",
+                        "example": 1
+                    },
+                    "description": {
+                        "type": "string",
+                        "example": "Mensalidade de outubro",
+                        "maxLength": 255
+                    },
+                    "original_amount": {
+                        "type": "number",
+                        "example": 150,
+                        "minimum": 0.01
+                    },
+                    "issued_on": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-10-01"
+                    },
+                    "due_on": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-10-10"
+                    },
+                    "paid_on": {
+                        "type": "string",
+                        "format": "date",
+                        "example": null,
+                        "nullable": true
+                    },
+                    "monthly_interest_rate": {
+                        "type": "number",
+                        "example": 0.02,
+                        "maximum": 1,
+                        "minimum": 0
+                    },
+                    "status": {
+                        "type": "string",
+                        "example": "pending",
+                        "enum": [
+                            "pending",
+                            "paid"
+                        ]
+                    }
+                },
+                "type": "object"
+            },
             "Customer": {
                 "required": [
                     "id",
@@ -628,6 +971,10 @@
         {
             "name": "Autenticação",
             "description": "Login e sessão"
+        },
+        {
+            "name": "Cobranças",
+            "description": "Cadastro de cobranças"
         },
         {
             "name": "Clientes",

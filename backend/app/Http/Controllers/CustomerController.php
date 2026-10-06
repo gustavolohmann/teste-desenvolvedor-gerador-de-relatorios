@@ -6,16 +6,18 @@ use App\Http\Requests\CustomerRequest;
 use App\Http\Resources\CustomerResource;
 use App\Models\Customer;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class CustomerController extends Controller
 {
-    public function index(): AnonymousResourceCollection
+    public function index(Request $request): AnonymousResourceCollection
     {
+        $perPage = min(100, max(1, $request->integer('per_page', 15)));
         $customers = Customer::query()
             ->orderBy('name')
             ->orderBy('id')
-            ->paginate(15);
+            ->paginate($perPage);
 
         return CustomerResource::collection($customers);
     }

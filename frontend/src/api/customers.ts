@@ -36,8 +36,8 @@ export const statusLabel: Record<CustomerStatus, string> = {
   inactive: 'Inativo',
 }
 
-export async function listCustomers(page: number, signal?: AbortSignal): Promise<CustomerPage> {
-  const result = await apiRequest<CustomerPage>(`/api/customers?page=${page}`, { signal })
+export async function listCustomers(page: number, signal?: AbortSignal, perPage = 15): Promise<CustomerPage> {
+  const result = await apiRequest<CustomerPage>(`/api/customers?page=${page}&per_page=${perPage}`, { signal })
 
   if (!result) {
     throw new ApiError('A API não respondeu.', 500)

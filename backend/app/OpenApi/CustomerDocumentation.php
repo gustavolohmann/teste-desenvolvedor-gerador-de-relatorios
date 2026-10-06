@@ -36,6 +36,7 @@ use OpenApi\Attributes as OA;
     tags: ['Clientes'],
     parameters: [
         new OA\Parameter(name: 'page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', minimum: 1)),
+        new OA\Parameter(name: 'per_page', in: 'query', required: false, schema: new OA\Schema(type: 'integer', minimum: 1, maximum: 100)),
     ],
     responses: [
         new OA\Response(
