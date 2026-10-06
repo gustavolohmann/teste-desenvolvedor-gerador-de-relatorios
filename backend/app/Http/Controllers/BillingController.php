@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Billing\BillingPayment;
+use App\Enums\BillingStatus;
+use App\Http\Requests\BillingPaymentRequest;
 use App\Http\Requests\BillingRequest;
 use App\Http\Resources\BillingResource;
 use App\Models\Billing;
@@ -10,6 +13,8 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class BillingController extends Controller
 {
+    public function __construct(private BillingPayment $payments) {}
+
     public function index(): AnonymousResourceCollection
     {
         $billings = Billing::query()
@@ -23,7 +28,9 @@ class BillingController extends Controller
 
     public function store(BillingRequest $request): JsonResponse
     {
-        $billing = Billing::query()->create($request->validated());
+        $billing = new Billing;
+        $this->fill($billing, $request->validated());
+        $billing->save();
         $billing->load('customer:id,name');
 
         return BillingResource::make($billing)
@@ -40,9 +47,43 @@ class BillingController extends Controller
 
     public function update(BillingRequest $request, Billing $billing): BillingResource
     {
-        $billing->update($request->validated());
+        $this->fill($billing, $request->validated());
+        $billing->save();
         $billing->load('customer:id,name');
 
         return BillingResource::make($billing);
+    }
+
+    public function payment(BillingPaymentRequest $request, Billing $billing): BillingResource
+    {
+        $this->payments->guardPending($billing);
+        $this->payments->register($billing, $request->validated('paid_on'));
+        $billing->save();
+        $billing->load('customer:id,name');
+
+        return BillingResource::make($billing);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function fill(Billing $billing, array $data): void
+    {
+        $billing->fill([
+            'customer_id' => $data['customer_id'],
+            'description' => $data['description'],
+            'original_amount' => $data['original_amount'],
+            'issued_on' => $data['issued_on'],
+            'due_on' => $data['due_on'],
+            'monthly_interest_rate' => $data['monthly_interest_rate'],
+        ]);
+
+        if ($data['status'] === BillingStatus::Paid->value) {
+            $this->payments->register($billing, (string) $data['paid_on']);
+
+            return;
+        }
+
+        $this->payments->reopen($billing);
     }
 }

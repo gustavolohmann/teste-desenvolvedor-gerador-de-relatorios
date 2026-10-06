@@ -185,6 +185,10 @@ a.button {
   color: var(--muted);
 }
 
+.badge-overdue {
+  color: #8a3b12;
+}
+
 .details {
   display: grid;
   gap: 1rem;

@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'issued_on',
     'due_on',
     'paid_on',
+    'amount_paid',
+    'interest_amount',
     'monthly_interest_rate',
     'status',
 ])]
@@ -31,6 +33,8 @@ class Billing extends Model
     {
         return [
             'original_amount' => 'decimal:2',
+            'amount_paid' => 'decimal:2',
+            'interest_amount' => 'decimal:2',
             'monthly_interest_rate' => 'decimal:6',
             'issued_on' => 'date',
             'due_on' => 'date',

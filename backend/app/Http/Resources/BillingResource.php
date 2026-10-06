@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources;
 
+use App\Billing\BillingFigures;
 use App\Enums\BillingStatus;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -14,6 +15,7 @@ class BillingResource extends JsonResource
     public function toArray(Request $request): array
     {
         $status = $this->status;
+        $amounts = app(BillingFigures::class)->for($this->resource);
 
         return [
             'id' => $this->id,
@@ -29,6 +31,11 @@ class BillingResource extends JsonResource
             'paid_on' => $this->paid_on?->toDateString(),
             'monthly_interest_rate' => $this->monthly_interest_rate,
             'status' => $status instanceof BillingStatus ? $status->value : $status,
+            'interest_amount' => $amounts->interestAmount,
+            'updated_amount' => $amounts->updatedAmount,
+            'amount_paid' => $amounts->amountPaid,
+            'days_overdue' => $amounts->daysOverdue,
+            'overdue' => $amounts->overdue,
         ];
     }
 }

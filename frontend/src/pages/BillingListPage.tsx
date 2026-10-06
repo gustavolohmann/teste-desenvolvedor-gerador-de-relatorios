@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router'
 import { ApiError } from '../api/client'
-import { billingStatusLabel, formatDate, formatMoney, listBillings, type BillingPage } from '../api/billings'
+import { billingBadgeClass, billingSituation, formatDate, formatMoney, listBillings, type BillingPage } from '../api/billings'
 import { Sheet } from '../components/Sheet'
 
 export function BillingListPage() {
@@ -51,7 +51,7 @@ export function BillingListPage() {
       wide
       eyebrow="Cobranças"
       title="Lançamentos"
-      lede="Cliente, valor original, vencimento e status."
+      lede="Cliente, valor atualizado, vencimento e status."
       footerStart="Ficha de cobrança"
       footerEnd={loading ? 'Consultando' : `${total} ${total === 1 ? 'cobrança' : 'cobranças'}`}
     >
@@ -74,10 +74,8 @@ export function BillingListPage() {
               <Link to={`/cobrancas/${billing.id}`}>{billing.description}</Link>
               <span>{billing.customer.name}</span>
               <span>{formatDate(billing.due_on)}</span>
-              <span>{formatMoney(billing.original_amount)}</span>
-              <span className={billing.status === 'paid' ? 'badge' : 'badge badge-inactive'}>
-                {billingStatusLabel[billing.status]}
-              </span>
+              <span>{formatMoney(billing.updated_amount)}</span>
+              <span className={billingBadgeClass(billing)}>{billingSituation(billing)}</span>
             </li>
           ))}
         </ul>

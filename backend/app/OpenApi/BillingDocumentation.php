@@ -16,7 +16,7 @@ use OpenApi\Attributes as OA;
 )]
 #[OA\Schema(
     schema: 'Billing',
-    required: ['id', 'customer_id', 'customer', 'description', 'original_amount', 'issued_on', 'due_on', 'paid_on', 'monthly_interest_rate', 'status'],
+    required: ['id', 'customer_id', 'customer', 'description', 'original_amount', 'issued_on', 'due_on', 'paid_on', 'monthly_interest_rate', 'status', 'interest_amount', 'updated_amount', 'amount_paid', 'days_overdue', 'overdue'],
     properties: [
         new OA\Property(property: 'id', type: 'integer', example: 1),
         new OA\Property(property: 'customer_id', type: 'integer', example: 1),
@@ -28,6 +28,19 @@ use OpenApi\Attributes as OA;
         new OA\Property(property: 'paid_on', type: 'string', format: 'date', example: '2026-10-09', nullable: true),
         new OA\Property(property: 'monthly_interest_rate', type: 'string', example: '0.020000', description: 'Taxa decimal. 0.02 equivale a 2% ao mês.'),
         new OA\Property(property: 'status', type: 'string', enum: ['pending', 'paid'], example: 'pending'),
+        new OA\Property(property: 'interest_amount', type: 'string', example: '2.00'),
+        new OA\Property(property: 'updated_amount', type: 'string', example: '152.00'),
+        new OA\Property(property: 'amount_paid', type: 'string', example: '152.00', nullable: true),
+        new OA\Property(property: 'days_overdue', type: 'integer', example: 30),
+        new OA\Property(property: 'overdue', type: 'boolean', example: true),
+    ],
+    type: 'object',
+)]
+#[OA\Schema(
+    schema: 'BillingPaymentInput',
+    required: ['paid_on'],
+    properties: [
+        new OA\Property(property: 'paid_on', type: 'string', format: 'date', example: '2026-11-09'),
     ],
     type: 'object',
 )]
@@ -124,6 +137,23 @@ use OpenApi\Attributes as OA;
         new OA\Response(response: 401, description: 'Não autenticado'),
         new OA\Response(response: 404, description: 'Registro não encontrado'),
         new OA\Response(response: 422, description: 'Dados inválidos'),
+    ],
+)]
+#[OA\Post(
+    path: '/api/billings/{billing}/payment',
+    operationId: 'payBilling',
+    summary: 'Registra o pagamento e congela os juros',
+    security: [['bearerAuth' => []]],
+    tags: ['Cobranças'],
+    parameters: [
+        new OA\Parameter(name: 'billing', in: 'path', required: true, schema: new OA\Schema(type: 'integer')),
+    ],
+    requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(ref: '#/components/schemas/BillingPaymentInput')),
+    responses: [
+        new OA\Response(response: 200, description: 'Pagamento registrado'),
+        new OA\Response(response: 401, description: 'Não autenticado'),
+        new OA\Response(response: 404, description: 'Registro não encontrado'),
+        new OA\Response(response: 422, description: 'Dados inválidos ou cobrança já paga'),
     ],
 )]
 class BillingDocumentation {}

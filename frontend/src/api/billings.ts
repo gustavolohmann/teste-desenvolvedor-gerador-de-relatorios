@@ -17,6 +17,11 @@ export type Billing = {
   paid_on: string | null
   monthly_interest_rate: string
   status: BillingStatus
+  interest_amount: string
+  updated_amount: string
+  amount_paid: string | null
+  days_overdue: number
+  overdue: boolean
 }
 
 export type BillingInput = {
@@ -47,6 +52,22 @@ export type BillingPage = {
 export const billingStatusLabel: Record<BillingStatus, string> = {
   pending: 'Pendente',
   paid: 'Paga',
+}
+
+export function billingSituation(billing: Pick<Billing, 'status' | 'overdue'>): string {
+  if (billing.status === 'paid') {
+    return 'Paga'
+  }
+
+  return billing.overdue ? 'Vencida' : 'Pendente'
+}
+
+export function billingBadgeClass(billing: Pick<Billing, 'status' | 'overdue'>): string {
+  if (billing.status === 'paid') {
+    return 'badge'
+  }
+
+  return billing.overdue ? 'badge badge-overdue' : 'badge badge-inactive'
 }
 
 export function formatMoney(value: string): string {
@@ -87,6 +108,19 @@ export async function createBilling(input: BillingInput): Promise<Billing> {
   const result = await apiRequest<BillingResponse>('/api/billings', {
     method: 'POST',
     body: payload(input),
+  })
+
+  if (!result?.data) {
+    throw new ApiError('A API não respondeu.', 500)
+  }
+
+  return result.data
+}
+
+export async function payBilling(id: number, paidOn: string): Promise<Billing> {
+  const result = await apiRequest<BillingResponse>(`/api/billings/${id}/payment`, {
+    method: 'POST',
+    body: { paid_on: paidOn },
   })
 
   if (!result?.data) {

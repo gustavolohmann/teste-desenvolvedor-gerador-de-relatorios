@@ -37,6 +37,8 @@ class BillingFactory extends Factory
         return $this->state(fn (array $attributes) => [
             'status' => BillingStatus::Paid,
             'paid_on' => $attributes['due_on'],
+            'interest_amount' => 0,
+            'amount_paid' => $attributes['original_amount'],
         ]);
     }
 }

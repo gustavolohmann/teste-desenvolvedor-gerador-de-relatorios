@@ -490,6 +490,54 @@
                 ]
             }
         },
+        "/api/billings/{billing}/payment": {
+            "post": {
+                "tags": [
+                    "Cobranças"
+                ],
+                "summary": "Registra o pagamento e congela os juros",
+                "operationId": "payBilling",
+                "parameters": [
+                    {
+                        "name": "billing",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/BillingPaymentInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Pagamento registrado"
+                    },
+                    "401": {
+                        "description": "Não autenticado"
+                    },
+                    "404": {
+                        "description": "Registro não encontrado"
+                    },
+                    "422": {
+                        "description": "Dados inválidos ou cobrança já paga"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/customers": {
             "get": {
                 "tags": [
@@ -769,7 +817,12 @@
                     "due_on",
                     "paid_on",
                     "monthly_interest_rate",
-                    "status"
+                    "status",
+                    "interest_amount",
+                    "updated_amount",
+                    "amount_paid",
+                    "days_overdue",
+                    "overdue"
                 ],
                 "properties": {
                     "id": {
@@ -819,6 +872,40 @@
                             "pending",
                             "paid"
                         ]
+                    },
+                    "interest_amount": {
+                        "type": "string",
+                        "example": "2.00"
+                    },
+                    "updated_amount": {
+                        "type": "string",
+                        "example": "152.00"
+                    },
+                    "amount_paid": {
+                        "type": "string",
+                        "example": "152.00",
+                        "nullable": true
+                    },
+                    "days_overdue": {
+                        "type": "integer",
+                        "example": 30
+                    },
+                    "overdue": {
+                        "type": "boolean",
+                        "example": true
+                    }
+                },
+                "type": "object"
+            },
+            "BillingPaymentInput": {
+                "required": [
+                    "paid_on"
+                ],
+                "properties": {
+                    "paid_on": {
+                        "type": "string",
+                        "format": "date",
+                        "example": "2026-11-09"
                     }
                 },
                 "type": "object"

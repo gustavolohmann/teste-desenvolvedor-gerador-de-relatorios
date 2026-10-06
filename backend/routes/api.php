@@ -20,4 +20,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/billings', [BillingController::class, 'store']);
     Route::get('/billings/{billing}', [BillingController::class, 'show']);
     Route::put('/billings/{billing}', [BillingController::class, 'update']);
+    Route::post('/billings/{billing}/payment', [BillingController::class, 'payment']);
 });
