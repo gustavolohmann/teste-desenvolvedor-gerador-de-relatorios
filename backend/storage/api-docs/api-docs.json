@@ -1,0 +1,321 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "Gerador de Relatórios",
+        "description": "API de faturamento. Os registros exigem o token retornado no login.",
+        "version": "1.0.0"
+    },
+    "paths": {
+        "/api/health": {
+            "get": {
+                "tags": [
+                    "Sistema"
+                ],
+                "summary": "Consulta a disponibilidade da API",
+                "operationId": "health",
+                "responses": {
+                    "200": {
+                        "description": "API disponível",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "required": [
+                                        "status"
+                                    ],
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "ok"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "servers": [
+                    {
+                        "url": "http://localhost:8000",
+                        "description": "Servidor local"
+                    }
+                ]
+            }
+        },
+        "/api/login": {
+            "post": {
+                "tags": [
+                    "Autenticação"
+                ],
+                "summary": "Autentica um usuário",
+                "operationId": "login",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "email",
+                                    "password"
+                                ],
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "admin@example.com"
+                                    },
+                                    "password": {
+                                        "type": "string",
+                                        "format": "password",
+                                        "example": "password"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Sessão iniciada",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "required": [
+                                        "token",
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "token": {
+                                            "type": "string"
+                                        },
+                                        "data": {
+                                            "required": [
+                                                "id",
+                                                "name",
+                                                "email"
+                                            ],
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "name": {
+                                                    "type": "string",
+                                                    "example": "Administrador"
+                                                },
+                                                "email": {
+                                                    "type": "string",
+                                                    "format": "email",
+                                                    "example": "admin@example.com"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Credenciais inválidas",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "required": [
+                                        "message"
+                                    ],
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Credenciais inválidas."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Dados inválidos",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "required": [
+                                        "message",
+                                        "errors"
+                                    ],
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Informe o e-mail."
+                                        },
+                                        "errors": {
+                                            "type": "object",
+                                            "example": {
+                                                "email": [
+                                                    "Informe o e-mail."
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "servers": [
+                    {
+                        "url": "http://localhost:8000",
+                        "description": "Servidor local"
+                    }
+                ]
+            }
+        },
+        "/api/user": {
+            "get": {
+                "tags": [
+                    "Autenticação"
+                ],
+                "summary": "Retorna o usuário autenticado",
+                "operationId": "currentUser",
+                "responses": {
+                    "200": {
+                        "description": "Usuário autenticado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "properties": {
+                                        "data": {
+                                            "required": [
+                                                "id",
+                                                "name",
+                                                "email"
+                                            ],
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "name": {
+                                                    "type": "string",
+                                                    "example": "Administrador"
+                                                },
+                                                "email": {
+                                                    "type": "string",
+                                                    "format": "email",
+                                                    "example": "admin@example.com"
+                                                }
+                                            },
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Não autenticado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "required": [
+                                        "message"
+                                    ],
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Não autenticado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "servers": [
+                    {
+                        "url": "http://localhost:8000",
+                        "description": "Servidor local"
+                    }
+                ]
+            }
+        },
+        "/api/logout": {
+            "post": {
+                "tags": [
+                    "Autenticação"
+                ],
+                "summary": "Encerra a sessão atual",
+                "operationId": "logout",
+                "responses": {
+                    "204": {
+                        "description": "Sessão encerrada"
+                    },
+                    "401": {
+                        "description": "Não autenticado",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "required": [
+                                        "message"
+                                    ],
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Não autenticado."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ],
+                "servers": [
+                    {
+                        "url": "http://localhost:8000",
+                        "description": "Servidor local"
+                    }
+                ]
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Sistema",
+            "description": "Disponibilidade da API"
+        },
+        {
+            "name": "Autenticação",
+            "description": "Login e sessão"
+        }
+    ],
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "description": "Token retornado por POST /api/login. Envie como Bearer.",
+                "scheme": "bearer",
+                "bearerFormat": "Sanctum"
+            }
+        }
+    }
+}
