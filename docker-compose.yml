@@ -1,0 +1,78 @@
+name: billing
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: billing
+      MYSQL_USER: billing
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - billing_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-ubilling", "-psecret"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+    networks:
+      - billing
+
+  backend:
+    build: ./backend
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      APP_NAME: "Gerador de Relatorios"
+      APP_ENV: local
+      APP_KEY: base64:eEFG+Uc5BFAe6cqeD/kGx2JAb5RHXd0qRNznQlKsaVs=
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:8000
+      FRONTEND_URL: http://localhost:5173,http://127.0.0.1:5173
+      LOG_CHANNEL: stderr
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: billing
+      DB_USERNAME: billing
+      DB_PASSWORD: secret
+      SESSION_DRIVER: database
+      CACHE_STORE: database
+      QUEUE_CONNECTION: database
+      BILLING_INTEREST: compound
+      L5_SWAGGER_GENERATE_ALWAYS: "true"
+      L5_SWAGGER_CONST_HOST: http://localhost:8000
+      PHP_CLI_SERVER_WORKERS: 4
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:8000/api/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    networks:
+      - billing
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8000
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "5173:80"
+    networks:
+      - billing
+
+networks:
+  billing:
+    name: billing
+
+volumes:
+  billing_mysql:
+    name: billing_mysql
