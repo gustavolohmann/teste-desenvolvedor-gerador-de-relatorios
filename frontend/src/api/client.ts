@@ -74,3 +74,28 @@ export async function apiRequest<T>(
 
   return response.json() as Promise<T>
 }
+
+export async function apiBlob(path: string): Promise<{ blob: Blob; filename: string }> {
+  const headers = new Headers({
+    Accept: 'text/csv',
+  })
+  const token = readToken()
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+
+  const response = await fetch(`${apiBaseUrl()}${path}`, { headers })
+
+  if (!response.ok) {
+    throw new ApiError(await errorMessage(response), response.status)
+  }
+
+  const disposition = response.headers.get('Content-Disposition') ?? ''
+  const match = /filename="([^"]+)"/.exec(disposition) ?? /filename=([^;]+)/.exec(disposition)
+
+  return {
+    blob: await response.blob(),
+    filename: match?.[1]?.trim() ?? 'faturamento.csv',
+  }
+}

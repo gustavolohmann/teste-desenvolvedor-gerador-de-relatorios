@@ -6,6 +6,7 @@ use App\Models\Billing;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\LazyCollection;
 
 final class BillingReportQuery
 {
@@ -25,6 +26,24 @@ final class BillingReportQuery
         $this->order($query, $filters['sort'] ?? 'due_on', $filters['direction'] ?? 'asc', $interest);
 
         return $query->paginate(15);
+    }
+
+    /**
+     * @param  array{period: string, from: string, to: string, customer_id?: int|null, status?: string|null, sort?: string|null, direction?: string|null}  $filters
+     * @return LazyCollection<int, Billing>
+     */
+    public function cursor(array $filters): LazyCollection
+    {
+        $query = $this->base($filters);
+        $interest = $this->interest->interestExpression();
+        $query->join('customers', 'customers.id', '=', 'billings.customer_id')
+            ->select('billings.*')
+            ->addSelect('customers.name as customer_name')
+            ->selectRaw("({$interest}) as report_interest")
+            ->selectRaw("(billings.original_amount + ({$interest})) as report_updated");
+        $this->order($query, $filters['sort'] ?? 'due_on', $filters['direction'] ?? 'asc', $interest);
+
+        return $query->cursor();
     }
 
     /**
@@ -97,9 +116,11 @@ final class BillingReportQuery
         $direction = $direction === 'desc' ? 'desc' : 'asc';
 
         if ($sort === 'customer') {
-            $query->join('customers', 'customers.id', '=', 'billings.customer_id')
-                ->orderBy('customers.name', $direction)
-                ->orderBy('billings.id');
+            if (! $this->joined($query, 'customers')) {
+                $query->join('customers', 'customers.id', '=', 'billings.customer_id');
+            }
+
+            $query->orderBy('customers.name', $direction)->orderBy('billings.id');
 
             return;
         }
@@ -133,5 +154,19 @@ final class BillingReportQuery
         }
 
         $query->orderBy($column, $direction)->orderBy('billings.id');
+    }
+
+    /**
+     * @param  Builder<Billing>  $query
+     */
+    private function joined(Builder $query, string $table): bool
+    {
+        foreach ($query->getQuery()->joins ?? [] as $join) {
+            if ($join->table === $table) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { billingSituation, formatDate, formatMoney, listCustomerOptions, type Billing } from '../api/billings'
 import type { Customer } from '../api/customers'
-import { getBillingReport, type BillingReport, type ReportDirection, type ReportPeriod, type ReportStatus } from '../api/reports'
+import { downloadBillingReport, getBillingReport, type BillingReport, type ReportDirection, type ReportPeriod, type ReportStatus } from '../api/reports'
 import { Sheet } from '../components/Sheet'
 
 const sorts = [
@@ -40,6 +40,7 @@ export function BillingReportPage() {
   const [report, setReport] = useState<BillingReport | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
   const [shownKey, setShownKey] = useState(queryKey)
 
   if (shownKey !== queryKey) {
@@ -114,6 +115,19 @@ export function BillingReportPage() {
     update({ sort: column, direction: 'asc' })
   }
 
+  async function handleExport() {
+    setExporting(true)
+    setError(null)
+
+    try {
+      await downloadBillingReport({ period, from, to, customerId, status, sort, direction, page })
+    } catch (reason) {
+      setError(reason instanceof ApiError ? reason.message : 'A API não respondeu.')
+    } finally {
+      setExporting(false)
+    }
+  }
+
   const total = report?.meta.total ?? 0
 
   return (
@@ -163,6 +177,11 @@ export function BillingReportPage() {
           </select>
         </label>
       </form>
+      <div className="toolbar">
+        <button className="button button-secondary" type="button" onClick={handleExport} disabled={exporting}>
+          {exporting ? 'Exportando.' : 'Exportar CSV'}
+        </button>
+      </div>
       {loading ? <p className="status">Carregando relatório.</p> : null}
       {error ? (
         <p className="alert" role="alert">

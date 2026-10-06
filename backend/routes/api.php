@@ -23,4 +23,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/billings/{billing}', [BillingController::class, 'update']);
     Route::post('/billings/{billing}/payment', [BillingController::class, 'payment']);
     Route::get('/reports/billings', [BillingReportController::class, 'index']);
+    Route::get('/reports/billings.csv', [BillingReportController::class, 'export']);
 });

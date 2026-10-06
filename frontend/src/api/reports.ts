@@ -1,4 +1,4 @@
-import { ApiError, apiRequest } from './client'
+import { ApiError, apiBlob, apiRequest } from './client'
 import type { Billing, BillingPage } from './billings'
 
 export type ReportPeriod = 'issued' | 'due' | 'paid'
@@ -29,15 +29,18 @@ export type ReportQuery = {
   page: number
 }
 
-export async function getBillingReport(query: ReportQuery, signal?: AbortSignal): Promise<BillingReport> {
+export function reportSearch(query: ReportQuery, includePage = true): URLSearchParams {
   const params = new URLSearchParams({
     period: query.period,
     from: query.from,
     to: query.to,
     sort: query.sort,
     direction: query.direction,
-    page: String(query.page),
   })
+
+  if (includePage) {
+    params.set('page', String(query.page))
+  }
 
   if (query.customerId) {
     params.set('customer_id', query.customerId)
@@ -47,11 +50,25 @@ export async function getBillingReport(query: ReportQuery, signal?: AbortSignal)
     params.set('status', query.status)
   }
 
-  const result = await apiRequest<BillingReport & { data: Billing[] }>(`/api/reports/billings?${params.toString()}`, { signal })
+  return params
+}
+
+export async function getBillingReport(query: ReportQuery, signal?: AbortSignal): Promise<BillingReport> {
+  const result = await apiRequest<BillingReport & { data: Billing[] }>(`/api/reports/billings?${reportSearch(query).toString()}`, { signal })
 
   if (!result?.data || !result.meta || !result.totals) {
     throw new ApiError('A API não respondeu.', 500)
   }
 
   return result
+}
+
+export async function downloadBillingReport(query: ReportQuery): Promise<void> {
+  const { blob, filename } = await apiBlob(`/api/reports/billings.csv?${reportSearch(query, false).toString()}`)
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
+  URL.revokeObjectURL(url)
 }
