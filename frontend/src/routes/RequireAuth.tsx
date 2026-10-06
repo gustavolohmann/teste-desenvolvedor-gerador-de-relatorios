@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from 'react-router'
 import { useAuth } from '../auth/auth-context'
+import { AppBar } from '../components/AppBar'
 import { Sheet } from '../components/Sheet'
 
 export function RequireAuth() {
@@ -27,5 +28,10 @@ export function RequireAuth() {
     return <Navigate to="/login" replace />
   }
 
-  return <Outlet />
+  return (
+    <>
+      <AppBar />
+      <Outlet />
+    </>
+  )
 }

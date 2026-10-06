@@ -1,30 +1,15 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router'
 import { useAuth } from '../auth/auth-context'
-import { clearNotice, readNotice, writeNotice } from '../auth/session'
+import { clearNotice, readNotice } from '../auth/session'
 import { Sheet } from '../components/Sheet'
 
 export function HomePage() {
-  const { user, logout } = useAuth()
-  const navigate = useNavigate()
+  const { user } = useAuth()
   const [notice] = useState(readNotice)
-  const [pending, setPending] = useState(false)
 
   useEffect(() => {
     clearNotice()
   }, [])
-
-  async function handleLogout() {
-    setPending(true)
-
-    try {
-      await logout()
-      writeNotice('Sessão encerrada.')
-      navigate('/login', { replace: true })
-    } finally {
-      setPending(false)
-    }
-  }
 
   return (
     <Sheet
@@ -39,11 +24,7 @@ export function HomePage() {
           {notice}
         </p>
       ) : null}
-      <div className="form-actions">
-        <button className="button" type="button" onClick={handleLogout} disabled={pending}>
-          {pending ? 'Saindo.' : 'Sair'}
-        </button>
-      </div>
+      <p className="lede">O cadastro de clientes fica no menu acima.</p>
     </Sheet>
   )
 }

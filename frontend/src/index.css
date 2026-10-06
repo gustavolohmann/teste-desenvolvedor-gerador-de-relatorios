@@ -27,7 +27,7 @@ body {
 
 .sheet {
   width: min(40rem, calc(100% - 2rem));
-  margin: 4rem auto;
+  margin: 2rem auto 4rem;
   padding: 2rem 1.5rem 0;
   background: var(--sheet);
   border: 1px solid var(--line);
@@ -76,7 +76,12 @@ h1 {
   font-weight: 600;
 }
 
-.field input {
+.sheet-wide {
+  width: min(64rem, calc(100% - 2rem));
+}
+
+.field input,
+.field select {
   font: inherit;
   font-weight: 400;
   color: var(--ink);
@@ -86,7 +91,9 @@ h1 {
 }
 
 .field input:focus-visible,
-.button:focus-visible {
+.field select:focus-visible,
+.button:focus-visible,
+.records a:focus-visible {
   outline: 2px solid var(--stamp);
   outline-offset: 2px;
 }
@@ -107,9 +114,129 @@ h1 {
   cursor: pointer;
 }
 
+a.button {
+  display: inline-block;
+  text-align: center;
+  text-decoration: none;
+}
+
 .button:disabled {
   cursor: wait;
   opacity: 0.7;
+}
+
+.button-secondary,
+.button-ghost {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.button-ghost {
+  color: #f4faf6;
+  border-color: #f4faf6;
+  padding: 0.45rem 0.8rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.toolbar {
+  margin-top: 1.25rem;
+}
+
+.records {
+  list-style: none;
+  margin: 1.25rem 0 0;
+  padding: 0;
+}
+
+.records li {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.85rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.records a {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.badge {
+  justify-self: end;
+  color: var(--stamp);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.badge-inactive {
+  color: var(--muted);
+}
+
+.details {
+  display: grid;
+  gap: 1rem;
+  margin: 1.25rem 0 0;
+}
+
+.details dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.details dd {
+  margin: 0.2rem 0 0;
+}
+
+.pager {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1.25rem;
+  background: var(--ink);
+  color: #f4faf6;
+}
+
+.topbar-links {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.topbar a {
+  color: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.topbar a[aria-current='page'] {
+  color: #b7e2cf;
+}
+
+.topbar a:focus-visible,
+.topbar .button:focus-visible {
+  outline: 2px solid #f4faf6;
+  outline-offset: 2px;
 }
 
 .alert {
@@ -133,10 +260,22 @@ h1 {
 
 @media (max-width: 640px) {
   .sheet {
-    margin-top: 1.5rem;
+    margin-top: 1.25rem;
   }
 
-  .slip {
+  .slip,
+  .topbar,
+  .records li,
+  .pager {
     flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .records li {
+    display: flex;
+  }
+
+  .badge {
+    justify-self: start;
   }
 }

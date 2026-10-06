@@ -7,11 +7,12 @@ type SheetProps = {
   children?: ReactNode
   footerStart: string
   footerEnd: string
+  wide?: boolean
 }
 
-export function Sheet({ eyebrow, title, lede, children, footerStart, footerEnd }: SheetProps) {
+export function Sheet({ eyebrow, title, lede, children, footerStart, footerEnd, wide = false }: SheetProps) {
   return (
-    <main className="sheet">
+    <main className={wide ? 'sheet sheet-wide' : 'sheet'}>
       <p className="eyebrow">{eyebrow}</p>
       <h1>{title}</h1>
       {lede ? <p className="lede">{lede}</p> : null}
