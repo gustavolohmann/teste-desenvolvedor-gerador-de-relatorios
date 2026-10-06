@@ -32,6 +32,8 @@ export function BillingFormPage() {
   const navigate = useNavigate()
   const [form, setForm] = useState<BillingInput>(emptyForm)
   const [customers, setCustomers] = useState<Customer[]>([])
+  const [pinnedCustomer, setPinnedCustomer] = useState<Customer | null>(null)
+  const [customerQuery, setCustomerQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -39,8 +41,8 @@ export function BillingFormPage() {
   useEffect(() => {
     const controller = new AbortController()
 
-    listCustomerOptions(controller.signal)
-      .then(async (options) => {
+    listCustomerOptions(controller.signal, customerQuery)
+      .then((options) => {
         if (controller.signal.aborted) {
           return
         }
@@ -50,18 +52,43 @@ export function BillingFormPage() {
         if (billingId === null) {
           setForm((current) => ({
             ...current,
-            customer_id: options[0]?.id ?? 0,
+            customer_id: current.customer_id || options[0]?.id || 0,
           }))
           setLoading(false)
-          return
         }
-
-        const billing = await getBilling(billingId, controller.signal)
-
+      })
+      .catch((reason: unknown) => {
         if (controller.signal.aborted) {
           return
         }
 
+        setError(reason instanceof ApiError ? reason.message : 'A API não respondeu.')
+        setLoading(false)
+      })
+
+    return () => controller.abort()
+  }, [billingId, customerQuery])
+
+  useEffect(() => {
+    if (billingId === null) {
+      return
+    }
+
+    const controller = new AbortController()
+
+    getBilling(billingId, controller.signal)
+      .then((billing) => {
+        if (controller.signal.aborted) {
+          return
+        }
+
+        setPinnedCustomer({
+          id: billing.customer.id,
+          name: billing.customer.name,
+          document: '',
+          email: '',
+          status: 'active',
+        })
         setForm({
           customer_id: billing.customer_id,
           description: billing.description,
@@ -85,6 +112,11 @@ export function BillingFormPage() {
 
     return () => controller.abort()
   }, [billingId])
+
+  const visibleCustomers =
+    pinnedCustomer && !customers.some((customer) => customer.id === pinnedCustomer.id)
+      ? [pinnedCustomer, ...customers]
+      : customers
 
   function updateField<K extends keyof BillingInput>(field: K, value: BillingInput[K]) {
     setForm((current) => ({ ...current, [field]: value }))
@@ -120,9 +152,20 @@ export function BillingFormPage() {
           {error}
         </p>
       ) : null}
-      {!loading && customers.length === 0 ? <p className="status">Cadastre um cliente antes de lançar a cobrança.</p> : null}
-      {!loading && customers.length > 0 ? (
+      {!loading && visibleCustomers.length === 0 && customerQuery.trim() === '' ? (
+        <p className="status">Cadastre um cliente antes de lançar a cobrança.</p>
+      ) : null}
+      {!loading && (visibleCustomers.length > 0 || customerQuery.trim() !== '') ? (
         <form className="form" onSubmit={handleSubmit}>
+          <label className="field" htmlFor="customer_query">
+            Buscar cliente
+            <input
+              id="customer_query"
+              value={customerQuery}
+              onChange={(event) => setCustomerQuery(event.target.value)}
+              placeholder="Nome ou documento"
+            />
+          </label>
           <label className="field" htmlFor="customer_id">
             Cliente
             <select
@@ -132,7 +175,7 @@ export function BillingFormPage() {
               onChange={(event) => updateField('customer_id', Number(event.target.value))}
               required
             >
-              {customers.map((customer) => (
+              {visibleCustomers.map((customer) => (
                 <option key={customer.id} value={customer.id}>
                   {customer.name}
                 </option>

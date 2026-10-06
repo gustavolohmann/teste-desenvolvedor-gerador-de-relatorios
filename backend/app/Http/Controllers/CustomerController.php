@@ -16,8 +16,17 @@ class CustomerController extends Controller
         $perPage = min(100, max(1, $request->integer('per_page', 15)));
         $customers = Customer::query()
             ->orderBy('name')
-            ->orderBy('id')
-            ->paginate($perPage);
+            ->orderBy('id');
+        $term = trim($request->string('q')->toString());
+
+        if ($term !== '') {
+            $like = '%'.addcslashes(mb_substr($term, 0, 100), '%_\\').'%';
+            $customers->where(function ($query) use ($like): void {
+                $query->where('name', 'like', $like)->orWhere('document', 'like', $like);
+            });
+        }
+
+        $customers = $customers->paginate($perPage);
 
         return CustomerResource::collection($customers);
     }

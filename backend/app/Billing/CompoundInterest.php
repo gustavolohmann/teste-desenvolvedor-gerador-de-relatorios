@@ -9,15 +9,7 @@ final class CompoundInterest implements InterestStrategy
 {
     public function updatedAmount(string $originalAmount, string $monthlyRate, int $daysOverdue): string
     {
-        $original = Money::normalize($originalAmount);
-
-        if ($daysOverdue <= 0 || bccomp($monthlyRate, '0', 6) !== 1) {
-            return $original;
-        }
-
-        $updated = (float) $original * ((1 + (float) $monthlyRate) ** ($daysOverdue / 30));
-
-        return Money::round(sprintf('%.10F', $updated));
+        return app(StrategyAmount::class)->updated($this, $originalAmount, $monthlyRate, $daysOverdue);
     }
 
     public function interestSql(string $originalColumn, string $rateColumn, string $daysSql): string

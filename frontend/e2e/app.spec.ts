@@ -69,7 +69,7 @@ test('cadastra cliente e cobrança, registra o pagamento e exporta o relatório'
 
   await page.getByRole('link', { name: 'Cobranças' }).click()
   await page.getByRole('link', { name: 'Nova cobrança' }).click()
-  await page.getByLabel('Cliente').selectOption({ label: name })
+  await page.getByRole('combobox', { name: 'Cliente', exact: true }).selectOption({ label: name })
   await page.getByLabel('Descrição').fill(description)
   await page.getByLabel('Valor original').fill('100')
   await page.getByLabel('Emissão').fill(iso(-40))
@@ -94,7 +94,7 @@ test('cadastra cliente e cobrança, registra o pagamento e exporta o relatório'
   await page.getByRole('link', { name: 'Relatório' }).click()
   await page.getByRole('textbox', { name: 'De', exact: true }).fill(due)
   await page.getByRole('textbox', { name: 'Até', exact: true }).fill(due)
-  await page.getByLabel('Cliente').selectOption({ label: name })
+  await page.getByRole('combobox', { name: 'Cliente', exact: true }).selectOption({ label: name })
   await page.getByLabel('Status').selectOption({ label: 'Paga' })
 
   await expect(page.getByRole('link', { name: description })).toBeVisible()

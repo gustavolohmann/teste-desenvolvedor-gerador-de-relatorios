@@ -143,16 +143,10 @@ export async function updateBilling(id: number, input: BillingInput): Promise<Bi
   return result.data
 }
 
-export async function listCustomerOptions(signal?: AbortSignal): Promise<Customer[]> {
-  const first = await listCustomers(1, signal, 100)
-  const customers = [...first.data]
+export async function listCustomerOptions(signal?: AbortSignal, query = ''): Promise<Customer[]> {
+  const page = await listCustomers(1, signal, 100, query)
 
-  for (let page = 2; page <= first.meta.last_page; page += 1) {
-    const next = await listCustomers(page, signal, 100)
-    customers.push(...next.data)
-  }
-
-  return customers
+  return page.data
 }
 
 function payload(input: BillingInput): BillingInput {

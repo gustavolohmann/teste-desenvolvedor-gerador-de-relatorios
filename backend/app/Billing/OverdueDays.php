@@ -37,4 +37,27 @@ final class OverdueDays
             ? "MAX({$diff}, 0)"
             : "GREATEST({$diff}, 0)";
     }
+
+    /**
+     * Dias não negativos entre duas colunas de data. Usado no seeder de volume
+     * para congelar o juros na data de pagamento, não em hoje.
+     */
+    public function nonNegativeBetweenSql(string $startColumn, string $endColumn): string
+    {
+        foreach ([$startColumn, $endColumn] as $column) {
+            if (! preg_match('/^[A-Za-z_.]+$/', $column)) {
+                throw new RuntimeException('A coluna de atraso do relatório é inválida.');
+            }
+        }
+
+        $diff = match (DB::connection()->getDriverName()) {
+            'mysql', 'mariadb' => "DATEDIFF({$endColumn}, {$startColumn})",
+            'sqlite' => "CAST(julianday({$endColumn}) - julianday({$startColumn}) AS INTEGER)",
+            default => throw new RuntimeException('O cálculo de atraso não está preparado para este banco.'),
+        };
+
+        return DB::connection()->getDriverName() === 'sqlite'
+            ? "MAX({$diff}, 0)"
+            : "GREATEST({$diff}, 0)";
+    }
 }

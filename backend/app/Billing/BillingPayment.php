@@ -4,7 +4,9 @@ namespace App\Billing;
 
 use App\Enums\BillingStatus;
 use App\Models\Billing;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 final class BillingPayment
@@ -13,6 +15,33 @@ final class BillingPayment
         private InterestStrategy $interest,
         private OverdueDays $days,
     ) {}
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function sync(Billing $billing, array $attributes, string $status, ?string $paidOn): Billing
+    {
+        return $this->locked($billing, function (Billing $locked) use ($attributes, $status, $paidOn): void {
+            $locked->fill($attributes);
+
+            if ($status === BillingStatus::Paid->value) {
+                $this->register($locked, (string) $paidOn);
+            } else {
+                $this->reopen($locked);
+            }
+
+            $locked->save();
+        });
+    }
+
+    public function capture(Billing $billing, string $paidOn): Billing
+    {
+        return $this->locked($billing, function (Billing $locked) use ($paidOn): void {
+            $this->guardPending($locked);
+            $this->register($locked, $paidOn);
+            $locked->save();
+        });
+    }
 
     public function register(Billing $billing, string $paidOn): void
     {
@@ -46,6 +75,32 @@ final class BillingPayment
             throw ValidationException::withMessages([
                 'paid_on' => 'A cobrança já está paga.',
             ]);
+        }
+    }
+
+    /**
+     * @param  callable(Billing): void  $callback
+     */
+    private function locked(Billing $billing, callable $callback): Billing
+    {
+        try {
+            return DB::transaction(function () use ($billing, $callback): Billing {
+                $locked = Billing::query()->whereKey($billing->getKey())->lockForUpdate()->firstOrFail();
+                $callback($locked);
+
+                return $locked;
+            });
+        } catch (QueryException $exception) {
+            $info = $exception->errorInfo;
+            $code = is_array($info) ? ($info[1] ?? null) : null;
+
+            if ($code === 1205) {
+                throw ValidationException::withMessages([
+                    'paid_on' => 'Não foi possível registrar o pagamento. Tente novamente.',
+                ]);
+            }
+
+            throw $exception;
         }
     }
 }

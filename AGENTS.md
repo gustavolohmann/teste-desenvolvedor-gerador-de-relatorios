@@ -20,7 +20,7 @@ Há um monólito. A API Laravel fica em `backend`. A interface React, Vite e Typ
 - Todo endpoint novo ou alterado atualiza as anotações OpenAPI e o JSON em `backend/storage/api-docs/api-docs.json`.
 - Controllers permanecem finos. Validação fica nos form requests. Respostas de erro continuam em português.
 - A tela formata moeda. A API devolve decimais com ponto.
-- Não adicione cadastro público, exclusão de cliente ou cobrança, papéis, cache, fila de exportação, CI ou observabilidade sem um pedido explícito.
+- A exportação do relatório usa a fila Redis e o job `GenerateReportJob`. Não adicione outra fila, cadastro público, exclusão de cliente ou cobrança, papéis, cache, CI ou observabilidade sem um pedido explícito.
 
 ## Verificação
 

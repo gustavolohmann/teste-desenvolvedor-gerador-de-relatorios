@@ -9,15 +9,7 @@ final class SimpleInterest implements InterestStrategy
 {
     public function updatedAmount(string $originalAmount, string $monthlyRate, int $daysOverdue): string
     {
-        $original = Money::normalize($originalAmount);
-
-        if ($daysOverdue <= 0 || bccomp($monthlyRate, '0', 6) !== 1) {
-            return $original;
-        }
-
-        $factor = bcadd('1', bcdiv(bcmul($monthlyRate, (string) $daysOverdue, 12), '30', 12), 12);
-
-        return Money::round(bcmul($original, $factor, 12));
+        return app(StrategyAmount::class)->updated($this, $originalAmount, $monthlyRate, $daysOverdue);
     }
 
     public function interestSql(string $originalColumn, string $rateColumn, string $daysSql): string

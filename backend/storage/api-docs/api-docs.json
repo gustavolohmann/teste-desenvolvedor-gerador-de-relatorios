@@ -564,6 +564,16 @@
                             "maximum": 100,
                             "minimum": 1
                         }
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "description": "Trecho do nome ou do documento",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "maxLength": 100
+                        }
                     }
                 ],
                 "responses": {

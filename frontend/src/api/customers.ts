@@ -36,8 +36,18 @@ export const statusLabel: Record<CustomerStatus, string> = {
   inactive: 'Inativo',
 }
 
-export async function listCustomers(page: number, signal?: AbortSignal, perPage = 15): Promise<CustomerPage> {
-  const result = await apiRequest<CustomerPage>(`/api/customers?page=${page}&per_page=${perPage}`, { signal })
+export async function listCustomers(page: number, signal?: AbortSignal, perPage = 15, query = ''): Promise<CustomerPage> {
+  const params = new URLSearchParams({
+    page: String(page),
+    per_page: String(perPage),
+  })
+  const term = query.trim()
+
+  if (term !== '') {
+    params.set('q', term)
+  }
+
+  const result = await apiRequest<CustomerPage>(`/api/customers?${params.toString()}`, { signal })
 
   if (!result) {
     throw new ApiError('A API não respondeu.', 500)

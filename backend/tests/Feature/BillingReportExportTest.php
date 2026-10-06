@@ -47,7 +47,10 @@ class BillingReportExportTest extends TestCase
         $this->assertSame($user->id, $report->user_id);
         $this->assertSame('billing', $report->type);
         $this->assertSame(ReportJobStatus::Pending, $report->status);
-        $this->assertSame($payload, $report->payload);
+        $stored = $report->payload;
+        ksort($payload);
+        ksort($stored);
+        $this->assertSame($payload, $stored);
         $this->assertArrayNotHasKey('rows', $report->payload);
         Queue::assertPushed(GenerateReportJob::class, function (GenerateReportJob $job) use ($report): bool {
             return $job->reportJobId === $report->id;
