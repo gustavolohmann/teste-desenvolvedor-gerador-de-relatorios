@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingController;
+use App\Http\Controllers\BillingReportController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\HealthController;
 use Illuminate\Support\Facades\Route;
@@ -21,4 +22,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/billings/{billing}', [BillingController::class, 'show']);
     Route::put('/billings/{billing}', [BillingController::class, 'update']);
     Route::post('/billings/{billing}/payment', [BillingController::class, 'payment']);
+    Route::get('/reports/billings', [BillingReportController::class, 'index']);
 });

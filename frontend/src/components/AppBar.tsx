@@ -26,6 +26,7 @@ export function AppBar() {
         <NavLink to="/">Início</NavLink>
         <NavLink to="/clientes">Clientes</NavLink>
         <NavLink to="/cobrancas">Cobranças</NavLink>
+        <NavLink to="/relatorios">Relatório</NavLink>
       </nav>
       <button className="button button-ghost" type="button" onClick={handleLogout} disabled={pending}>
         {pending ? 'Saindo.' : 'Sair'}

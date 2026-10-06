@@ -22,6 +22,6 @@ final class CompoundInterest implements InterestStrategy
 
     public function interestSql(string $originalColumn, string $rateColumn, string $daysSql): string
     {
-        return "ROUND({$originalColumn} * POW(1 + {$rateColumn}, {$daysSql} / 30), 2) - {$originalColumn}";
+        return "ROUND({$originalColumn} * POW(1 + {$rateColumn}, {$daysSql} / 30.0), 2) - {$originalColumn}";
     }
 }

@@ -27,4 +27,13 @@ final class Money
     {
         return bcsub(self::normalize($left), self::normalize($right), 2);
     }
+
+    public static function fromDatabase(mixed $amount): string
+    {
+        if (is_string($amount) && preg_match('/^-?\d+(\.\d+)?$/', $amount) === 1) {
+            return self::round($amount);
+        }
+
+        return self::round(sprintf('%.8F', (float) $amount));
+    }
 }

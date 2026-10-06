@@ -24,7 +24,7 @@ export function HomePage() {
           {notice}
         </p>
       ) : null}
-      <p className="lede">Clientes e cobranças ficam no menu acima.</p>
+      <p className="lede">Clientes, cobranças e o relatório ficam no menu acima.</p>
     </Sheet>
   )
 }

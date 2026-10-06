@@ -3,7 +3,9 @@
 namespace App\Http\Resources;
 
 use App\Billing\BillingFigures;
+use App\Billing\Money;
 use App\Enums\BillingStatus;
+use App\Models\Billing;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -14,8 +16,12 @@ class BillingResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $status = $this->status;
-        $amounts = app(BillingFigures::class)->for($this->resource);
+        /** @var Billing $billing */
+        $billing = $this->resource;
+        $status = $billing->status;
+        $amounts = app(BillingFigures::class)->for($billing);
+        $reportedInterest = $billing->getAttribute('report_interest');
+        $reportedUpdated = $billing->getAttribute('report_updated');
 
         return [
             'id' => $this->id,
@@ -31,8 +37,8 @@ class BillingResource extends JsonResource
             'paid_on' => $this->paid_on?->toDateString(),
             'monthly_interest_rate' => $this->monthly_interest_rate,
             'status' => $status instanceof BillingStatus ? $status->value : $status,
-            'interest_amount' => $amounts->interestAmount,
-            'updated_amount' => $amounts->updatedAmount,
+            'interest_amount' => $reportedInterest === null ? $amounts->interestAmount : Money::fromDatabase($reportedInterest),
+            'updated_amount' => $reportedUpdated === null ? $amounts->updatedAmount : Money::fromDatabase($reportedUpdated),
             'amount_paid' => $amounts->amountPaid,
             'days_overdue' => $amounts->daysOverdue,
             'overdue' => $amounts->overdue,

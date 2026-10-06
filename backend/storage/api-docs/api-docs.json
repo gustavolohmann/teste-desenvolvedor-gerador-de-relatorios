@@ -785,6 +785,178 @@
                     }
                 ]
             }
+        },
+        "/api/reports/billings": {
+            "get": {
+                "tags": [
+                    "Relatórios"
+                ],
+                "summary": "Relatório de cobranças por período",
+                "operationId": "billingReport",
+                "parameters": [
+                    {
+                        "name": "period",
+                        "in": "query",
+                        "description": "Base do período",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "issued",
+                                "due",
+                                "paid"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "date"
+                        }
+                    },
+                    {
+                        "name": "customer_id",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "description": "Pendente é a cobrança em aberto dentro do prazo. Vencida deriva de pendente com vencimento anterior a hoje.",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "pending",
+                                "overdue",
+                                "paid"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "customer",
+                                "description",
+                                "issued_on",
+                                "due_on",
+                                "paid_on",
+                                "status",
+                                "original_amount",
+                                "interest_amount",
+                                "updated_amount",
+                                "amount_paid"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "direction",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "asc",
+                                "desc"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Página do relatório e totalizadores do filtro inteiro",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "required": [
+                                        "data",
+                                        "meta",
+                                        "totals"
+                                    ],
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Billing"
+                                            }
+                                        },
+                                        "meta": {
+                                            "required": [
+                                                "current_page",
+                                                "last_page",
+                                                "per_page",
+                                                "total"
+                                            ],
+                                            "properties": {
+                                                "current_page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "last_page": {
+                                                    "type": "integer",
+                                                    "example": 1
+                                                },
+                                                "per_page": {
+                                                    "type": "integer",
+                                                    "example": 15
+                                                },
+                                                "total": {
+                                                    "type": "integer",
+                                                    "example": 2
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        "totals": {
+                                            "$ref": "#/components/schemas/BillingReportTotals"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Não autenticado"
+                    },
+                    "422": {
+                        "description": "Filtros inválidos"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -1039,6 +1211,43 @@
                     }
                 },
                 "type": "object"
+            },
+            "BillingReportTotals": {
+                "required": [
+                    "count",
+                    "original_amount",
+                    "interest_amount",
+                    "updated_amount",
+                    "amount_paid",
+                    "pending_amount"
+                ],
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 2
+                    },
+                    "original_amount": {
+                        "type": "string",
+                        "example": "300.00"
+                    },
+                    "interest_amount": {
+                        "type": "string",
+                        "example": "2.99"
+                    },
+                    "updated_amount": {
+                        "type": "string",
+                        "example": "302.99"
+                    },
+                    "amount_paid": {
+                        "type": "string",
+                        "example": "302.99"
+                    },
+                    "pending_amount": {
+                        "type": "string",
+                        "example": "0.00"
+                    }
+                },
+                "type": "object"
             }
         },
         "securitySchemes": {
@@ -1066,6 +1275,10 @@
         {
             "name": "Clientes",
             "description": "Cadastro de clientes"
+        },
+        {
+            "name": "Relatórios",
+            "description": "Relatório de faturamento"
         }
     ]
 }
