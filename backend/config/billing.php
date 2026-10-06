@@ -18,4 +18,8 @@
 
 return [
     'interest' => env('BILLING_INTEREST', 'compound'),
+
+    'volume' => (int) env('BILLING_VOLUME', 10000),
+
+    'volume_customers' => (int) env('BILLING_VOLUME_CUSTOMERS', 200),
 ];

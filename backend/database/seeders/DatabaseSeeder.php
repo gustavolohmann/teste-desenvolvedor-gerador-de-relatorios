@@ -11,7 +11,7 @@ class DatabaseSeeder extends Seeder
     use WithoutModelEvents;
 
     /**
-     * Seed the application's database.
+     * Cria o usuário de acesso. O volume de cobranças fica em BillingVolumeSeeder.
      */
     public function run(): void
     {
