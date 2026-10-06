@@ -4,6 +4,32 @@ Aplicação de faturamento com autenticação e relatório por período. O backe
 
 Para usar o sistema basta Docker e Docker Compose. PHP, Composer, Node e MySQL na máquina só entram na seção de testes automatizados.
 
+## Quick Start
+
+Pré-requisito: Docker e Docker Compose.
+
+```text
+git clone <url-do-repositorio>
+cd <diretorio-do-repositorio>
+docker compose up --build
+```
+
+`docker compose up --build` sobe MySQL, Redis, a API, o worker e a interface. O container `backend` migra o banco e cria o usuário de teste. A subida deixa 1 usuário, 0 clientes e 0 cobranças. Ela não popula clientes nem cobranças.
+
+A carga de demonstração é manual. Com o Compose no ar:
+
+```text
+docker compose exec backend php artisan db:seed --class=BillingVolumeSeeder
+```
+
+O padrão gera 200 clientes e 10.000 cobranças. Cada execução acrescenta outro lote. `BILLING_VOLUME=1000000` e `BILLING_VOLUME_CUSTOMERS=1000`, no mesmo comando, geram 1.000 clientes e 1.000.000 de cobranças. O detalhe está na seção de dados de demonstração.
+
+- Interface: http://localhost:5173
+- E-mail: `admin@example.com`
+- Senha: `password`
+
+Se 8000 ou 5173 já estiverem em uso, encerre o outro processo antes de subir. MySQL e Redis publicados em outra porta estão na seção seguinte.
+
 ## Como executar
 
 ### 1. Pré-requisitos
@@ -96,7 +122,13 @@ Não há cadastro público. Sem token, a API responde 401 com a mensagem `Não a
 
 ### 6. Dados de demonstração
 
-A subida deixa o banco com 1 usuário, 0 clientes e 0 cobranças. O volume fica num seeder separado, porque a subida roda o seed de novo a cada start do container e esse seeder acrescenta outro lote se for chamado outra vez.
+#### Seed automático
+
+O container `backend` executa `php artisan migrate --force --seed` em toda subida. Isso chama só `DatabaseSeeder`, que grava `admin@example.com` com `updateOrCreate`. Repetir a subida não duplica o usuário. Esse seed não cria clientes nem cobranças. Num volume novo, o banco fica com 1 usuário, 0 clientes e 0 cobranças.
+
+#### Seed de volume
+
+`BillingVolumeSeeder` não roda na subida. Ele é manual e acrescenta um lote a cada execução. Não apaga o lote anterior.
 
 Volume de demonstração, o padrão de `backend/config/billing.php`: 200 clientes e 10.000 cobranças.
 
@@ -252,7 +284,7 @@ A API responde 202 antes de gerar o arquivo. A tela consulta o status a cada 1 s
 
 O CSV percorre o filtro com `cursor()`, uma cobrança por vez, e grava cada linha com `fputcsv`. Não é `chunk()` e não é streaming HTTP. O arquivo leva BOM UTF-8 e separador `;`, para o Excel em português. Célula que começa com `=`, `+`, `-` ou `@` ganha um apóstrofo. No fim do arquivo estão os mesmos totalizadores do filtro. Uma geração medida de cerca de 51 mil linhas levou por volta de 9 segundos.
 
-O PDF também lê com `cursor()`, mas o Dompdf monta o HTML e a tabela inteiros na memória do worker antes de gravar o arquivo. Não há teto artificial de linhas. Há um limite prático de memória. Um PDF de 637 linhas levou por volta de 5 segundos dentro de 512 MB. A partir de algumas centenas de linhas a tabela pode estourar essa memória. Nesse caso o job termina `failed`. O CSV é o formato para um volume realmente grande. Não descreva o PDF como streaming nem como ilimitado.
+O PDF também lê com `cursor()`, mas o Dompdf monta o HTML e a tabela inteiros na memória do worker antes de gravar o arquivo. Não há teto artificial de linhas e não há um número fixo de linhas que garanta sucesso ou falha. O consumo cresce com o tamanho do documento. O PHP do worker está limitado a 512 MB. Um PDF medido de 637 linhas concluiu em cerca de 5 segundos nesse limite. Um relatório bem maior pode esgotar essa memória; o job então termina `failed`. O CSV é o formato para um volume realmente grande. O PDF não faz streaming.
 
 O worker do Compose é:
 
@@ -355,8 +387,8 @@ Não há microsserviço. Juros, pagamento e consulta do relatório ficam em `App
 
 ## Limitações
 
-- O PDF não faz streaming. Documentos grandes podem esgotar os 512 MB do worker e o job fica `failed`.
-- Não há teto de linhas na aplicação. O limite prático do PDF é a memória do Dompdf.
+- O PDF não faz streaming. O Dompdf monta o documento na memória. Não há um número fixo de linhas que garanta sucesso ou falha. Um relatório bem maior que o PDF medido de 637 linhas pode esgotar os 512 MB do worker, e o job fica `failed`.
+- Não há teto de linhas na aplicação.
 - O arquivo do teste fica no volume local, não em storage externo.
 - Há um worker. Não há escala horizontal nem fila extra.
 - A paginação da tela usa `OFFSET`.
